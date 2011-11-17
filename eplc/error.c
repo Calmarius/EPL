@@ -1,16 +1,16 @@
 #include "error.h"
 
-const int ERROR_BUFFER_SIZE = 100;
+#define ERROR_BUFFER_SIZE 100
 
-static ErrorCode errors[ERROR_BUFFER_SIZE] = {0};
+static enum ErrorCode errors[ERROR_BUFFER_SIZE] = {0};
 static int errorPtr = 0;
 
-void raiseError(ErrorCode errorCode)
+void ERR_raiseError(enum ErrorCode errorCode)
 {
     errors[errorPtr++] = errorCode;
 }
 
-ErrorCode catchError()
+enum ErrorCode ERR_catchError()
 {
     if (!errorPtr)
     {

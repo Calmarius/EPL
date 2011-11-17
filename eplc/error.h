@@ -7,7 +7,7 @@ enum ErrorCode
 
 };
 
-void raiseError(ErrorCode errorCode);
-ErrorCode catchError();
+void ERR_raiseError(enum ErrorCode errorCode);
+enum ErrorCode ERR_catchError();
 
 #endif // ERROR_H
