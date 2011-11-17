@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "lexer.h"
+
 void compileFile(const char *fileName)
 {
-
 }
 
 int main(int argc, char **argv)
