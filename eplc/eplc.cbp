@@ -11,6 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters="test.epl" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -31,6 +32,14 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="error.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="error.h" />
+		<Unit filename="lexer.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="lexer.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>

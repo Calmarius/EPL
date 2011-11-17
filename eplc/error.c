@@ -2,20 +2,47 @@
 
 #define ERROR_BUFFER_SIZE 100
 
-static enum ErrorCode errors[ERROR_BUFFER_SIZE] = {0};
-static int errorPtr = 0;
+static enum ERR_ErrorCode errors[ERROR_BUFFER_SIZE] = {0};
 
-void ERR_raiseError(enum ErrorCode errorCode)
+void ERR_raiseError(enum ERR_ErrorCode errorCode)
 {
-    errors[errorPtr++] = errorCode;
-}
-
-enum ErrorCode ERR_catchError()
-{
-    if (!errorPtr)
+    int i;
+    for (i = 0; i < ERROR_BUFFER_SIZE; i++)
     {
-        return E_OK;
+        if (!errors[i])
+        {
+            errors[i] = errorCode;
+            return;
+        }
     }
-    return errors[--errorPtr];
 }
+
+int ERR_catchError(enum ERR_ErrorCode errorCode)
+{
+    int i;
+    for (i = 0; i < ERROR_BUFFER_SIZE; i++)
+    {
+        if (errors[i] == errorCode)
+        {
+            errors[i] = E_OK;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int ERR_isError()
+{
+    int i;
+    for (i = 0; i < ERROR_BUFFER_SIZE; i++)
+    {
+        if (errors[i])
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
 
