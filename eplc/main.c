@@ -19,12 +19,13 @@ const char *readFileContents(const char *filename)
         return 0;
     }
 
-    fseek(f, SEEK_END, 0);
+    fseek(f, 0, SEEK_END);
     size = ftell(f) + 1;
-    fseek(f, SEEK_SET, 0);
-    sourceCode = malloc(size);
+    fseek(f, 0, SEEK_SET);
+    sourceCode = malloc(size + 1);
     fread(sourceCode, size, 1, f);
     fclose(f);
+    sourceCode[size] = 0;
 
     return sourceCode;
 
