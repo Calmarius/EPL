@@ -44,5 +44,14 @@ int ERR_isError()
     return 0;
 }
 
+void ERR_clearErrors()
+{
+    int i;
+    for (i = 0; i < ERROR_BUFFER_SIZE; i++)
+    {
+        errors[i] = E_OK;
+    }
+}
+
 
 

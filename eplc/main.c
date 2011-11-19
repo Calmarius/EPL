@@ -31,10 +31,28 @@ const char *readFileContents(const char *filename)
 
 }
 
+#define STRINGCASE(x) case x : return #x;
+
+const char *tokenTypeToString(enum LEX_TokenType type)
+{
+    switch (type)
+    {
+        STRINGCASE(LEX_UNKNOWN)
+        STRINGCASE(LEX_IDENTIFIER)
+        STRINGCASE(LEX_SEMICOLON)
+        STRINGCASE(LEX_LEFTBRACE)
+        STRINGCASE(LEX_RIGHTBRACE)
+    }
+    return "<UNKNOWN>";
+}
+
+#undef STRINGCASE
+
 void compileFile(const char *fileName, NotificationCallback callback)
 {
     const char *fileContent = readFileContents(fileName);
     struct LEX_LexerResult lexerResult;
+    char buffer[200];
 
     if (ERR_isError())
     {
@@ -47,6 +65,29 @@ void compileFile(const char *fileName, NotificationCallback callback)
     }
 
     lexerResult = LEX_tokenizeString(fileContent);
+    if (ERR_isError())
+    {
+        if (ERR_catchError(E_INVALID_CHARACTER))
+        {
+            sprintf(buffer, "At line %d, column %d: Invalid character.\n", lexerResult.linePos, lexerResult.columnPos);
+            callback(buffer);
+        }
+        return;
+    }
+    if (callback)
+    {
+        int i;
+        struct LEX_LexerToken *tokens = lexerResult.tokens;
+        callback("Source code tokenized.\n");
+        sprintf(buffer, "    %d tokens found.\n", lexerResult.tokenCount);
+        callback(buffer);
+        for (i = 0; i < lexerResult.tokenCount; i++)
+        {
+            sprintf(buffer, "    %-30s  %.*s\n", tokenTypeToString(tokens[i].tokenType), tokens[i].length, tokens[i].start);
+            callback(buffer);
+        }
+
+    }
 
 }
 
@@ -70,5 +111,7 @@ int main(int argc, char **argv)
 
 cleanup:
     free(sourceCode);
+
+    fgetc(stdin);
     return 0;
 }
