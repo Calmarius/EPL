@@ -10,6 +10,9 @@ enum LEX_TokenType
     LEX_SEMICOLON,
     LEX_LEFTBRACE,
     LEX_RIGHTBRACE,
+    LEX_KW_EXE,
+    LEX_KW_MAIN,
+    LEX_KW_MODULE,
 };
 
 

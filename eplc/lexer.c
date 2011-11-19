@@ -1,9 +1,23 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "lexer.h"
 #include "error.h"
 
+struct KeywordTokenTypePair
+{
+    const char *keywordText;
+    enum LEX_TokenType tokenType;
+};
+
+// this array must be ordered by the keyword names!
+static struct KeywordTokenTypePair keywordMapping[] =
+{
+    {"exe", LEX_KW_EXE},
+    {"main", LEX_KW_MAIN},
+    {"module", LEX_KW_MODULE}
+};
 
 struct LexerContext
 {
@@ -159,6 +173,32 @@ static int parseIdentifier(struct LexerContext *context)
     {
         acceptCurrent(context);
     }
+    // set token type if the current token is a keyword, do binary search in keyword.
+    {
+        int left = 0;
+        int right = sizeof(keywordMapping) / sizeof(keywordMapping[0]);
+        while (right >= left)
+        {
+            int middle = (left + right) >> 1;
+            struct KeywordTokenTypePair *kttp = &keywordMapping[middle];
+            int d = strncmp(context->currentToken->start, kttp->keywordText, context->currentToken->length);
+            if (d < 0)
+            {
+                right = middle - 1;
+            }
+            else if (d > 0)
+            {
+                left = middle + 1;
+            }
+            else
+            {
+                setCurrentTokenType(context, kttp->tokenType);
+                break;
+            }
+        }
+    }
+
+
     return 1;
 }
 

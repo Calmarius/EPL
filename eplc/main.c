@@ -42,6 +42,9 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_SEMICOLON)
         STRINGCASE(LEX_LEFTBRACE)
         STRINGCASE(LEX_RIGHTBRACE)
+        STRINGCASE(LEX_KW_EXE)
+        STRINGCASE(LEX_KW_MAIN)
+        STRINGCASE(LEX_KW_MODULE)
     }
     return "<UNKNOWN>";
 }
@@ -83,7 +86,18 @@ void compileFile(const char *fileName, NotificationCallback callback)
         callback(buffer);
         for (i = 0; i < lexerResult.tokenCount; i++)
         {
-            sprintf(buffer, "    %-30s  %.*s\n", tokenTypeToString(tokens[i].tokenType), tokens[i].length, tokens[i].start);
+            struct LEX_LexerToken *token = &tokens[i];
+            sprintf(
+                buffer,
+                "    %-20s  %20.*s (%-5d:%-3d) - (%-5d:%-3d)\n",
+                tokenTypeToString(token->tokenType),
+                token->length > 20 ? 20 : token->length,
+                token->start,
+                token->beginLine,
+                token->beginColumn,
+                token->endLine,
+                token->endColumn
+                );
             callback(buffer);
         }
 

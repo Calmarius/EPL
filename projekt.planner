@@ -20,7 +20,7 @@
     </calendar>
   </calendars>
   <tasks>
-    <task id="1" name="EPL projekt" note="" work="547200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="1" name="EPL projekt" note="" work="604800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="2" name="Elkezd&#xE9;s" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="3" name="Param&#xE9;terek parsol&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="4" name="Hibaverem" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
@@ -28,45 +28,48 @@
       </task>
       <task id="6" name="EPL ford&#xED;t&#xF3;" note="" work="432000" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="7" name="EPL lexik&#xE1;lis elemz&#x151;" note="" work="115200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-          <task id="8" name="Azonos&#xED;t&#xF3;k felsimer&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="8" name="Azonos&#xED;t&#xF3;k felsimer&#xE9;se" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="9" name="Sz&#xE1;mok felismer&#xE9;se" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
             <task id="10" name="Eg&#xE9;sz sz&#xE1;mok felismer&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
             <task id="11" name="Val&#xF3;s sz&#xE1;mok" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           </task>
           <task id="12" name="Adatt&#xED;pusok &#xE9;s stubok l&#xE9;trehoz&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="13" name="Kulcsszavak felismer&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
         </task>
-        <task id="13" name="EPL szintaxis elemz&#x151;" note="" work="172800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-          <task id="14" name="Nyelvtan defini&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-            <task id="15" name="Deklar&#xE1;ci&#xF3;khoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="16" name="Utas&#xED;t&#xE1;sokhoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="17" name="Eg&#xE9;sz modulhoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="14" name="EPL szintaxis elemz&#x151;" note="" work="172800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+          <task id="15" name="Nyelvtan defini&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+            <task id="16" name="Deklar&#xE1;ci&#xF3;khoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="17" name="Utas&#xED;t&#xE1;sokhoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="18" name="Eg&#xE9;sz modulhoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           </task>
-          <task id="18" name="Parser &#xED;r&#xE1;s rekurz&#xED;v lesz&#xE1;ll&#xE1;ssal." note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-            <task id="19" name="&#xDC;res modul beparsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="20" name="Deklar&#xE1;ci&#xF3;k parsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="21" name="Utas&#xED;t&#xE1;sok parsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-          </task>
-        </task>
-        <task id="22" name="EPL szemantikai elemz&#x151;" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-          <task id="23" name="Kifejez&#xE9;sek valid&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-            <task id="24" name="Operandusok t&#xED;pusellen&#x151;rz&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="25" name="break continue ellen&#x151;rz&#xE9;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-            <task id="26" name="Param&#xE9;terek ellen&#x151;rz&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="19" name="Parser &#xED;r&#xE1;s rekurz&#xED;v lesz&#xE1;ll&#xE1;ssal." note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+            <task id="20" name="&#xDC;res modul beparsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="21" name="Deklar&#xE1;ci&#xF3;k parsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="22" name="Utas&#xED;t&#xE1;sok parsol&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           </task>
         </task>
-        <task id="27" name="EPL k&#xF3;dgener&#xE1;tor" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-          <task id="28" name="X86-os k&#xF3;dgener&#xE1;tor" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-          <task id="29" name="C-re ford&#xED;t&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="23" name="EPL szemantikai elemz&#x151;" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+          <task id="24" name="Kifejez&#xE9;sek valid&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+            <task id="25" name="Operandusok t&#xED;pusellen&#x151;rz&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="26" name="break continue ellen&#x151;rz&#xE9;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+            <task id="27" name="Param&#xE9;terek ellen&#x151;rz&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          </task>
+        </task>
+        <task id="28" name="EPL k&#xF3;dgener&#xE1;tor" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+          <task id="29" name="X86-os k&#xF3;dgener&#xE1;tor" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="30" name="C-re ford&#xED;t&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
         </task>
       </task>
-      <task id="30" name="EPL IDE" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="31" name="Forr&#xE1;sk&#xF3;dmegjelen&#xED;t&#xE9;s k&#xE9;rd&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="32" name="GUI framework kiv&#xE1;laszt&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="31" name="EPL IDE" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="32" name="Forr&#xE1;sk&#xF3;dmegjelen&#xED;t&#xE9;s k&#xE9;rd&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="33" name="GUI framework kiv&#xE1;laszt&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
-      <task id="33" name="EPL debugger" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-        <task id="34" name="Debugger UNIX-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-        <task id="35" name="Windows-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="34" name="EPL debugger" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="35" name="Debugger UNIX-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+        <task id="36" name="Windows-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
+      <task id="37" name="Dinamikus t&#xF6;mb adatszekezet l&#xE9;trehoz&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="38" name="Dokument&#xE1;l&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
     </task>
   </tasks>
   <resource-groups/>
