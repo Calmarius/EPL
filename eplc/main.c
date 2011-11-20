@@ -40,11 +40,30 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_UNKNOWN)
         STRINGCASE(LEX_IDENTIFIER)
         STRINGCASE(LEX_SEMICOLON)
-        STRINGCASE(LEX_LEFTBRACE)
-        STRINGCASE(LEX_RIGHTBRACE)
+        STRINGCASE(LEX_LEFT_BRACE)
+        STRINGCASE(LEX_RIGHT_BRACE)
+        STRINGCASE(LEX_ASSIGN_OPERATOR)
+        STRINGCASE(LEX_BUILT_IN_TYPE)
+        STRINGCASE(LEX_FLOAT_NUMBER)
+        STRINGCASE(LEX_HEXA_NUMBER)
+        STRINGCASE(LEX_DECIMAL_NUMBER)
+        STRINGCASE(LEX_OCTAL_NUMBER)
+        STRINGCASE(LEX_ADD_OPERATOR)
+        STRINGCASE(LEX_LEFT_PARENTHESIS)
+        STRINGCASE(LEX_RIGHT_PARENTHESIS)
+        STRINGCASE(LEX_LEFT_BRACKET)
+        STRINGCASE(LEX_RIGHT_BRACKET)
+        STRINGCASE(LEX_EQUALITY)
+
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
         STRINGCASE(LEX_KW_MODULE)
+        STRINGCASE(LEX_KW_IF)
+        STRINGCASE(LEX_KW_LOOP)
+        STRINGCASE(LEX_KW_NEXT)
+        STRINGCASE(LEX_KW_VARDECL)
+        STRINGCASE(LEX_KW_INC)
+        STRINGCASE(LEX_KW_ELSE)
     }
     return "<UNKNOWN>";
 }
@@ -70,11 +89,29 @@ void compileFile(const char *fileName, NotificationCallback callback)
     lexerResult = LEX_tokenizeString(fileContent);
     if (ERR_isError())
     {
+        sprintf(buffer, "At line %d, column %d:", lexerResult.linePos, lexerResult.columnPos);
+        callback(buffer);
         if (ERR_catchError(E_INVALID_CHARACTER))
         {
-            sprintf(buffer, "At line %d, column %d: Invalid character.\n", lexerResult.linePos, lexerResult.columnPos);
-            callback(buffer);
+            sprintf(buffer, "Invalid character.\n");
         }
+        else if (ERR_catchError(E_INVALID_BUILT_IN_TYPE_LETTER))
+        {
+            sprintf(buffer, "Invalid built in type.\n");
+        }
+        else if (ERR_catchError(E_INVALID_OPERATOR))
+        {
+            sprintf(buffer, "Invalid operator\n");
+        }
+        else if (ERR_catchError(E_MISSING_EXPONENTIAL_PART))
+        {
+            sprintf(buffer, "Missing exponential part.\n");
+        }
+        else if (ERR_catchError(E_HEXA_FLOATING_POINT_NOT_ALLOWED))
+        {
+            sprintf(buffer, "Hexa floating point is not allowed.\n");
+        }
+        callback(buffer);
         return;
     }
     if (callback)
