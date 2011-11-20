@@ -175,11 +175,14 @@ static int parseIdentifier(struct LexerContext *context)
     }
     // set token type if the current token is a keyword, do binary search in keyword.
     {
+        const int N = sizeof(keywordMapping) / sizeof(keywordMapping[0]);
         int left = 0;
-        int right = sizeof(keywordMapping) / sizeof(keywordMapping[0]);
+        int right = N - 1;
         while (right >= left)
         {
             int middle = (left + right) >> 1;
+            assert(middle >= 0);
+            assert(middle < N);
             struct KeywordTokenTypePair *kttp = &keywordMapping[middle];
             int d = strncmp(context->currentToken->start, kttp->keywordText, context->currentToken->length);
             if (d < 0)
