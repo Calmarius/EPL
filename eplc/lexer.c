@@ -15,6 +15,7 @@ struct KeywordTokenTypePair
 // this array must be ordered by the keyword names!
 static struct KeywordTokenTypePair keywordMapping[] =
 {
+    {"break", 5, LEX_KW_BREAK},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
     {"if", 2, LEX_KW_IF},

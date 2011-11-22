@@ -4,6 +4,7 @@
 
 #include "lexer.h"
 #include "error.h"
+#include "syntax.h"
 
 typedef void (*NotificationCallback)(const char *msg);
 
@@ -67,6 +68,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_VARDECL)
         STRINGCASE(LEX_KW_INC)
         STRINGCASE(LEX_KW_ELSE)
+        STRINGCASE(LEX_KW_BREAK)
     }
     return "<UNKNOWN>";
 }
@@ -77,6 +79,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
 {
     const char *fileContent = readFileContents(fileName);
     struct LEX_LexerResult lexerResult;
+    struct STX_SyntaxTree syntaxTree;
     char buffer[200];
 
     if (ERR_isError())
@@ -141,6 +144,8 @@ void compileFile(const char *fileName, NotificationCallback callback)
             callback(buffer);
         }
     }
+    // Syntax analysis
+    syntaxTree = STX_buildSyntaxTree(lexerResult.tokens, lexerResult.tokenCount);
 cleanup:
     LEX_cleanUpLexerResult(&lexerResult);
 }
@@ -165,6 +170,8 @@ int main(int argc, char **argv)
 
 cleanup:
     free(sourceCode);
+
+    fgetc(stdin);
 
     return 0;
 }

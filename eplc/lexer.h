@@ -31,7 +31,8 @@ enum LEX_TokenType
     LEX_KW_INC,
     LEX_KW_LOOP,
     LEX_KW_NEXT,
-    LEX_KW_VARDECL
+    LEX_KW_VARDECL,
+    LEX_KW_BREAK,
 };
 
 
@@ -62,7 +63,11 @@ struct LEX_LexerResult
  * @return The tokens
  */
 struct LEX_LexerResult LEX_tokenizeString(const char *code);
-
+/**
+ * Cleans up the lexer result
+ *
+ * @param [in,out] lexerResult Lexer result to clean up.
+ */
 void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult);
 
 #endif // LEXER_H
