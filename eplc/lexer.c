@@ -494,6 +494,11 @@ static int doTokenization(struct LexerContext *context)
     return 1;
 }
 
+void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult)
+{
+    free(lexerResult->tokens);
+}
+
 struct LEX_LexerResult LEX_tokenizeString(const char *code)
 {
     struct LEX_LexerResult lexerResult;

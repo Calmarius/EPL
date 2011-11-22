@@ -63,4 +63,6 @@ struct LEX_LexerResult
  */
 struct LEX_LexerResult LEX_tokenizeString(const char *code);
 
+void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult);
+
 #endif // LEXER_H

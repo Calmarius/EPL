@@ -68,8 +68,8 @@
         <task id="35" name="Debugger UNIX-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="36" name="Windows-ra" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
-      <task id="37" name="Dinamikus t&#xF6;mb adatszekezet l&#xE9;trehoz&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
-      <task id="38" name="Dokument&#xE1;l&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="37" name="Dokument&#xE1;l&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="38" name="Tesztek" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
     </task>
   </tasks>
   <resource-groups/>

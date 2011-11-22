@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "lexer.h"
 #include "error.h"
@@ -12,6 +13,7 @@ const char *readFileContents(const char *filename)
 {
     FILE *f = fopen(filename,"rb");
     int size;
+    int read;
 
     if (!f)
     {
@@ -20,10 +22,11 @@ const char *readFileContents(const char *filename)
     }
 
     fseek(f, 0, SEEK_END);
-    size = ftell(f) + 1;
+    size = ftell(f);
     fseek(f, 0, SEEK_SET);
     sourceCode = malloc(size + 1);
-    fread(sourceCode, size, 1, f);
+    read = fread(sourceCode, size, 1, f);
+    assert(read);
     fclose(f);
     sourceCode[size] = 0;
 
@@ -112,7 +115,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
             sprintf(buffer, "Hexa floating point is not allowed.\n");
         }
         callback(buffer);
-        return;
+        goto cleanup;
     }
     if (callback)
     {
@@ -137,9 +140,9 @@ void compileFile(const char *fileName, NotificationCallback callback)
                 );
             callback(buffer);
         }
-
     }
-
+cleanup:
+    LEX_cleanUpLexerResult(&lexerResult);
 }
 
 void notificationCallback(const char *msg)
@@ -163,6 +166,5 @@ int main(int argc, char **argv)
 cleanup:
     free(sourceCode);
 
-    fgetc(stdin);
     return 0;
 }
