@@ -50,7 +50,15 @@ struct STX_SyntaxTree
 
 };
 
-struct STX_SyntaxTree STX_buildSyntaxTree(
+struct STX_ParserResult
+{
+    struct STX_SyntaxTree *tree;
+
+    int line;
+    int column;
+};
+
+struct STX_ParserResult STX_buildSyntaxTree(
     const struct LEX_LexerToken *token,
     int tokenCount
 );

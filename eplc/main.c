@@ -79,7 +79,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
 {
     const char *fileContent = readFileContents(fileName);
     struct LEX_LexerResult lexerResult;
-    struct STX_SyntaxTree syntaxTree;
+    struct STX_ParserResult parserResult;
     char buffer[200];
 
     if (ERR_isError())
@@ -145,7 +145,35 @@ void compileFile(const char *fileName, NotificationCallback callback)
         }
     }
     // Syntax analysis
-    syntaxTree = STX_buildSyntaxTree(lexerResult.tokens, lexerResult.tokenCount);
+    parserResult = STX_buildSyntaxTree(lexerResult.tokens, lexerResult.tokenCount);
+
+    if (ERR_isError())
+    {
+        sprintf(buffer, "At line %d, column %d: ", parserResult.line, parserResult.column);
+        callback(buffer);
+        if (ERR_catchError(E_STX_MAIN_EXPECTED))
+        {
+            sprintf(buffer, "main expected. \n");
+        }
+        else if (ERR_catchError(E_STX_MODULE_EXPECTED))
+        {
+            sprintf(buffer, "module expected. \n");
+        }
+        else if (ERR_catchError(E_STX_MODULE_TYPE_EXPECTED))
+        {
+            sprintf(buffer, "exe, dll or lib expected. \n");
+        }
+        else if (ERR_catchError(E_STX_SEMICOLON_EXPECTED))
+        {
+            sprintf(buffer, "; expected. \n");
+        }
+        else
+        {
+            sprintf(buffer, "Unhandled syntax error.\n");
+        }
+        callback(buffer);
+        goto cleanup;
+    }
 cleanup:
     LEX_cleanUpLexerResult(&lexerResult);
 }

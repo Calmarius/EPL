@@ -33,6 +33,8 @@ enum LEX_TokenType
     LEX_KW_NEXT,
     LEX_KW_VARDECL,
     LEX_KW_BREAK,
+    LEX_KW_DLL,
+    LEX_KW_LIB,
 };
 
 
