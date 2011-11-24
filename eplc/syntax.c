@@ -22,6 +22,27 @@ struct SyntaxContext
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree);
 static void initializeNode(struct STX_SyntaxTreeNode *node);
 
+static void preorderStep(struct STX_SyntaxTree *tree, int level, struct STX_SyntaxTreeNode *node, STX_TransverseCallback callback, void *userData)
+{
+    int index;
+    callback(node, level, userData);
+    index = node->firstChildIndex;
+    while (index >= 0)
+    {
+        struct STX_SyntaxTreeNode *current = &tree->nodes[index];
+        preorderStep(tree, level+1, current, callback, userData);
+        index = current->nextSiblingIndex;
+    }
+}
+
+void STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData)
+{
+    struct STX_SyntaxTreeNode *node;
+    node = &tree->nodes[tree->rootNodeIndex];
+    preorderStep(tree, 0, node, callback, userData);
+}
+
+
 static void initializeSyntaxTree(struct STX_SyntaxTree *tree)
 {
     struct STX_SyntaxTreeNode *node;
@@ -37,18 +58,18 @@ static void appendChild(
     struct STX_SyntaxTreeNode *node,
     struct STX_SyntaxTreeNode *child)
 {
-    child->parent = node->id;
-    if (node->firstChild == -1)
+    child->parentIndex = node->id;
+    if (node->firstChildIndex == -1)
     {
-        node->firstChild = child->id;
+        node->firstChildIndex = child->id;
     }
-    if (node->lastChild != -1)
+    if (node->lastChildIndex != -1)
     {
-        struct STX_SyntaxTreeNode *lastChild = &tree->nodes[node->lastChild];
-        lastChild->nextSibling = child->id;
-        child->previousSibling = lastChild->id;
+        struct STX_SyntaxTreeNode *lastChild = &tree->nodes[node->lastChildIndex];
+        lastChild->nextSiblingIndex = child->id;
+        child->previousSiblingIndex = lastChild->id;
     }
-    node->lastChild = child->id;
+    node->lastChildIndex = child->id;
 }
 
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
@@ -99,12 +120,12 @@ static struct STX_NodeAttribute *allocateAttribute(struct STX_SyntaxTree *tree)
 
 static void initializeNode(struct STX_SyntaxTreeNode *node)
 {
-    node->parent = -1;
-    node->firstChild = -1;
-    node->lastChild = -1;
-    node->nextSibling = -1;
-    node->previousSibling = -1;
-    node->attributes = -1;
+    node->parentIndex = -1;
+    node->firstChildIndex = -1;
+    node->lastChildIndex = -1;
+    node->nextSiblingIndex = -1;
+    node->previousSiblingIndex = -1;
+    node->attributeIndex = -1;
 }
 
 static const struct LEX_LexerToken *getCurrent(struct SyntaxContext *context)
@@ -145,19 +166,61 @@ static int expect(struct SyntaxContext *context, enum LEX_TokenType type)
     }
 }
 
-static int parseDeclarations(struct SyntaxContext *context)
+static void ascendToParent(struct SyntaxContext *context)
 {
-    return 1;
+    assert(context->currentNode->parentIndex != -1);
+    context->currentNode = &context->tree->nodes[context->currentNode->parentIndex];
+}
+
+static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type)
+{
+    struct STX_SyntaxTreeNode *node = allocateNode(context->tree);
+    initializeNode(node);
+    node->nodeType = type;
+    appendChild(context->tree, context->currentNode, node);
+    context->currentNode = node;
 }
 
 static int parseBlock(struct SyntaxContext *context)
 {
+    descendNewNode(context, STX_BLOCK);
+    ascendToParent(context);
     return 1;
 }
+
+static int parseVariableDeclaration(struct SyntaxContext *context)
+{
+    return 1;
+}
+
+static int parseDeclarations(struct SyntaxContext *context)
+{
+    const struct LEX_LexerToken *current = getCurrent(context);
+
+    descendNewNode(context, STX_DECLARATIONS);
+    if (current->tokenType == LEX_KW_VARDECL)
+    {
+        if (!parseVariableDeclaration(context)) return 0;
+    }
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * Module ::=
+ * 'module' {'exe' | 'lib' | 'dll' } ';'
+ * <Declarations>
+ * 'main'
+ * <Block>
+ */
 
 static int parseModule(struct SyntaxContext *context)
 {
     const struct LEX_LexerToken *current;
+    struct STX_NodeAttribute *attribute;
+
+    descendNewNode(context, STX_MODULE);
+
     if (!expect(context, LEX_KW_MODULE))
     {
         ERR_raiseError(E_STX_MODULE_EXPECTED);
@@ -169,6 +232,22 @@ static int parseModule(struct SyntaxContext *context)
         (current->tokenType == LEX_KW_DLL) ||
         (current->tokenType == LEX_KW_LIB))
     {
+        attribute = allocateAttribute(context->tree);
+        switch (current->tokenType)
+        {
+            case LEX_KW_EXE:
+                attribute->moduleAttributes.type = STX_MOD_EXE;
+            break;
+            case LEX_KW_LIB:
+                attribute->moduleAttributes.type = STX_MOD_LIB;
+            break;
+            case LEX_KW_DLL:
+                attribute->moduleAttributes.type = STX_MOD_DLL;
+            break;
+            default:
+                assert(0);
+        }
+        context->currentNode->attributeIndex = attribute->id;
         acceptCurrent(context);
     }
     else
@@ -189,7 +268,7 @@ static int parseModule(struct SyntaxContext *context)
     }
     if (!parseBlock(context)) return 0;
 
-
+    ascendToParent(context);
     return 1;
 }
 

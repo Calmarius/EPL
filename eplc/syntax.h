@@ -6,7 +6,18 @@ struct LEX_LexerToken;
 enum STX_NodeType
 {
     STX_ROOT,
+    STX_MODULE,
+    STX_DECLARATIONS,
+    STX_BLOCK
 };
+
+enum STX_ModuleAttribute
+{
+    STX_MOD_EXE,
+    STX_MOD_DLL,
+    STX_MOD_LIB
+};
+
 
 /**
  * Stores the attributes of a single node
@@ -15,6 +26,15 @@ struct STX_NodeAttribute
 {
     int id;
     int allocated;
+
+    union
+    {
+        struct
+        {
+            enum STX_ModuleAttribute type;
+        } moduleAttributes;
+    };
+
 };
 
 /**
@@ -23,12 +43,12 @@ struct STX_NodeAttribute
 struct STX_SyntaxTreeNode
 {
     int id;
-    int parent;
-    int firstChild;
-    int lastChild;
-    int nextSibling;
-    int previousSibling;
-    int attributes;
+    int parentIndex;
+    int firstChildIndex;
+    int lastChildIndex;
+    int nextSiblingIndex;
+    int previousSiblingIndex;
+    int attributeIndex;
     enum STX_NodeType nodeType;
     int allocated;
 };
@@ -63,7 +83,11 @@ struct STX_ParserResult STX_buildSyntaxTree(
     int tokenCount
 );
 
+typedef void (*STX_TransverseCallback)(struct STX_SyntaxTreeNode *node, int level, void *userData);
+
 void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
+
+void STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
 
 

@@ -69,11 +69,33 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_INC)
         STRINGCASE(LEX_KW_ELSE)
         STRINGCASE(LEX_KW_BREAK)
+        STRINGCASE(LEX_KW_DLL)
+        STRINGCASE(LEX_KW_LIB)
+    }
+    return "<UNKNOWN>";
+}
+
+const char *nodeTypeToString(enum STX_NodeType nodeType)
+{
+    switch (nodeType)
+    {
+        STRINGCASE(STX_ROOT)
+        STRINGCASE(STX_MODULE)
+        STRINGCASE(STX_BLOCK)
+        STRINGCASE(STX_DECLARATIONS)
     }
     return "<UNKNOWN>";
 }
 
 #undef STRINGCASE
+
+void dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
+{
+    NotificationCallback callback = (NotificationCallback)userData;
+    char buffer[200];
+    sprintf(buffer, "%*s %s\n", level*4, "", nodeTypeToString(node->nodeType));
+    callback(buffer);
+}
 
 void compileFile(const char *fileName, NotificationCallback callback)
 {
@@ -174,6 +196,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
         callback(buffer);
         goto cleanup;
     }
+    STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
 cleanup:
     LEX_cleanUpLexerResult(&lexerResult);
 }
