@@ -8,7 +8,9 @@ enum STX_NodeType
     STX_ROOT,
     STX_MODULE,
     STX_DECLARATIONS,
-    STX_BLOCK
+    STX_BLOCK,
+    STX_TYPE,
+    STX_VARDECL
 };
 
 enum STX_ModuleAttribute
@@ -34,6 +36,8 @@ struct STX_NodeAttribute
             enum STX_ModuleAttribute type;
         } moduleAttributes;
     };
+    const char *name;
+    int nameLength;
 
 };
 

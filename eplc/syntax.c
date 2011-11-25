@@ -188,20 +188,84 @@ static int parseBlock(struct SyntaxContext *context)
     return 1;
 }
 
+static int parseType(struct SyntaxContext *context)
+{
+    const struct LEX_LexerToken *token;
+
+    descendNewNode(context, STX_TYPE);
+    token = getCurrent(context);
+
+    if ((token->tokenType == LEX_BUILT_IN_TYPE) || (token->tokenType == LEX_IDENTIFIER))
+    {
+        struct STX_NodeAttribute *attr = allocateAttribute(context->tree);
+        attr->name = token->start;
+        attr->nameLength = token->length;
+        context->currentNode->attributeIndex = attr->id;
+        acceptCurrent(context);
+    }
+    else
+    {
+        ERR_raiseError(E_STX_TYPE_EXPECTED);
+        return 0;
+    }
+
+    ascendToParent(context);
+    return 1;
+}
+
 static int parseVariableDeclaration(struct SyntaxContext *context)
 {
+    const struct LEX_LexerToken *current;
+
+    descendNewNode(context, STX_VARDECL);
+    if (!expect(context, LEX_KW_VARDECL))
+    {
+        ERR_raiseError(E_STX_VARDECL_EXPECTED);
+        return 0;
+    }
+    if (!parseType(context )) return 0;
+    current = getCurrent(context);
+    if (current->tokenType == LEX_IDENTIFIER)
+    {
+        struct STX_NodeAttribute *attr = allocateAttribute(context->tree);
+        attr->name = current->start;
+        attr->nameLength = current->length;
+        context->currentNode->attributeIndex = attr->id;
+        acceptCurrent(context);
+    }
+    else
+    {
+        ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+        return 0;
+    }
+
+    if (!expect(context, LEX_SEMICOLON))
+    {
+        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
+        return 0;
+    }
+
+
+    ascendToParent(context);
     return 1;
 }
 
 static int parseDeclarations(struct SyntaxContext *context)
 {
-    const struct LEX_LexerToken *current = getCurrent(context);
+    int declarationFound = 0;
 
     descendNewNode(context, STX_DECLARATIONS);
-    if (current->tokenType == LEX_KW_VARDECL)
+    do
     {
-        if (!parseVariableDeclaration(context)) return 0;
+        const struct LEX_LexerToken *current = getCurrent(context);
+        declarationFound = 0;
+        if (current->tokenType == LEX_KW_VARDECL)
+        {
+            declarationFound = 1;
+            if (!parseVariableDeclaration(context)) return 0;
+        }
     }
+    while (declarationFound);
     ascendToParent(context);
     return 1;
 }

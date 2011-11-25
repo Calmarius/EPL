@@ -83,6 +83,8 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_MODULE)
         STRINGCASE(STX_BLOCK)
         STRINGCASE(STX_DECLARATIONS)
+        STRINGCASE(STX_TYPE)
+        STRINGCASE(STX_VARDECL)
     }
     return "<UNKNOWN>";
 }
@@ -188,6 +190,18 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_SEMICOLON_EXPECTED))
         {
             sprintf(buffer, "; expected. \n");
+        }
+        else if (ERR_catchError(E_STX_TYPE_EXPECTED))
+        {
+            sprintf(buffer, "data type expected. \n");
+        }
+        else if (ERR_catchError(E_STX_IDENTIFIER_EXPECTED))
+        {
+            sprintf(buffer, "identifier expected. \n");
+        }
+        else if (ERR_catchError(E_STX_VARDECL_EXPECTED))
+        {
+            sprintf(buffer, "variable declaration expected. \n");
         }
         else
         {
