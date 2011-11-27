@@ -16,16 +16,22 @@ struct KeywordTokenTypePair
 static struct KeywordTokenTypePair keywordMapping[] =
 {
     {"break", 5, LEX_KW_BREAK},
+    {"buffer", 6, LEX_KW_BUFFER},
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
+    {"handle", 6, LEX_KW_HANDLE},
     {"if", 2, LEX_KW_IF},
     {"inc", 3, LEX_KW_INC},
     {"lib", 3, LEX_KW_LIB},
+    {"localptr", 8, LEX_KW_LOCALPTR},
     {"loop", 4, LEX_KW_LOOP},
     {"main", 4, LEX_KW_MAIN},
     {"module", 6, LEX_KW_MODULE},
     {"next", 4, LEX_KW_NEXT},
+    {"of", 2, LEX_KW_OF},
+    {"pointer", 7, LEX_KW_POINTER},
+    {"to", 2, LEX_KW_TO},
     {"vardecl", 7, LEX_KW_VARDECL},
 };
 

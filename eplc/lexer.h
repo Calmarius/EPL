@@ -35,6 +35,12 @@ enum LEX_TokenType
     LEX_KW_BREAK,
     LEX_KW_DLL,
     LEX_KW_LIB,
+    LEX_KW_HANDLE,
+    LEX_KW_POINTER,
+    LEX_KW_LOCALPTR,
+    LEX_KW_BUFFER,
+    LEX_KW_OF,
+    LEX_KW_TO,
 };
 
 

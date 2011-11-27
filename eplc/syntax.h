@@ -10,7 +10,8 @@ enum STX_NodeType
     STX_DECLARATIONS,
     STX_BLOCK,
     STX_TYPE,
-    STX_VARDECL
+    STX_VARDECL,
+    STX_TYPE_PREFIX
 };
 
 enum STX_ModuleAttribute
@@ -18,6 +19,14 @@ enum STX_ModuleAttribute
     STX_MOD_EXE,
     STX_MOD_DLL,
     STX_MOD_LIB
+};
+
+enum STX_TypePrefix
+{
+    STX_TP_POINTER,
+    STX_TP_LOCALPTR,
+    STX_TP_BUFFER,
+    STX_TP_HANDLE
 };
 
 
@@ -35,9 +44,15 @@ struct STX_NodeAttribute
         {
             enum STX_ModuleAttribute type;
         } moduleAttributes;
+        struct
+        {
+            enum STX_TypePrefix type;
+            int elements;
+        } typePrefixAttributes;
     };
     const char *name;
     int nameLength;
+    struct STX_SyntaxTree *belongsTo;
 
 };
 
@@ -55,6 +70,7 @@ struct STX_SyntaxTreeNode
     int attributeIndex;
     enum STX_NodeType nodeType;
     int allocated;
+    struct STX_SyntaxTree *belongsTo;
 };
 
 /**

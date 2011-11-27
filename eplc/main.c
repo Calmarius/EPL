@@ -71,6 +71,12 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_BREAK)
         STRINGCASE(LEX_KW_DLL)
         STRINGCASE(LEX_KW_LIB)
+        STRINGCASE(LEX_KW_HANDLE)
+        STRINGCASE(LEX_KW_POINTER)
+        STRINGCASE(LEX_KW_LOCALPTR)
+        STRINGCASE(LEX_KW_BUFFER)
+        STRINGCASE(LEX_KW_OF)
+        STRINGCASE(LEX_KW_TO)
     }
     return "<UNKNOWN>";
 }
@@ -85,17 +91,92 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_DECLARATIONS)
         STRINGCASE(STX_TYPE)
         STRINGCASE(STX_VARDECL)
+        STRINGCASE(STX_TYPE_PREFIX)
+    }
+    return "<UNKNOWN>";
+}
+
+const char *moduleTypeToString(enum STX_ModuleAttribute moduleType)
+{
+    switch (moduleType)
+    {
+        STRINGCASE(STX_MOD_DLL)
+        STRINGCASE(STX_MOD_LIB)
+        STRINGCASE(STX_MOD_EXE)
+    }
+    return "<UNKNOWN>";
+}
+
+const char *typePrefixTypeToString(enum STX_TypePrefix moduleType)
+{
+    switch (moduleType)
+    {
+        STRINGCASE(STX_TP_BUFFER)
+        STRINGCASE(STX_TP_HANDLE)
+        STRINGCASE(STX_TP_LOCALPTR)
+        STRINGCASE(STX_TP_POINTER)
     }
     return "<UNKNOWN>";
 }
 
 #undef STRINGCASE
 
+const struct STX_NodeAttribute *getNodeAttribute(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->attributeIndex == -1)
+    {
+        return 0;
+    }
+    else
+    {
+        return &node->belongsTo->attributes[node->attributeIndex];
+    }
+}
+
+const char *attributeToString(const struct STX_SyntaxTreeNode *node)
+{
+    static char buffer[500];
+    char *ptr = buffer;
+    const struct STX_NodeAttribute *attribute = getNodeAttribute(node);
+
+    if (!attribute)
+    {
+        return "";
+    }
+    if (node->nodeType == STX_TYPE_PREFIX)
+    {
+        ptr += sprintf(ptr, "type = %s ", typePrefixTypeToString(attribute->typePrefixAttributes.type));
+        if (attribute->typePrefixAttributes.type == STX_TP_BUFFER)
+        {
+            ptr += sprintf(ptr, "elements = %d ", attribute->typePrefixAttributes.elements);
+        }
+    }
+    else if (node->nodeType == STX_MODULE)
+    {
+        ptr += sprintf(ptr, "type = %s ", moduleTypeToString(attribute->moduleAttributes.type));
+    }
+    if (attribute->name)
+    {
+        ptr += sprintf(
+            ptr,
+            "name = '%.*s' ",
+            attribute->nameLength,
+            attribute->name);
+    }
+    return buffer;
+}
+
 void dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
 {
     NotificationCallback callback = (NotificationCallback)userData;
-    char buffer[200];
-    sprintf(buffer, "%*s %s\n", level*4, "", nodeTypeToString(node->nodeType));
+    char buffer[500];
+    sprintf(
+        buffer,
+        "%*s %s %s\n",
+        level*4,
+        "",
+        nodeTypeToString(node->nodeType),
+        attributeToString(node));
     callback(buffer);
 }
 
@@ -202,6 +283,26 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_VARDECL_EXPECTED))
         {
             sprintf(buffer, "variable declaration expected. \n");
+        }
+        else if (ERR_catchError(E_STX_OF_EXPECTED))
+        {
+            sprintf(buffer, "of expected. \n");
+        }
+        else if (ERR_catchError(E_STX_LEFT_BRACKET_EXPECTED))
+        {
+            sprintf(buffer, "[ expected. \n");
+        }
+        else if (ERR_catchError(E_STX_RIGHT_BRACKET_EXPECTED))
+        {
+            sprintf(buffer, "] expected. \n");
+        }
+        else if (ERR_catchError(E_STX_INTEGER_NUMBER_EXPECTED))
+        {
+            sprintf(buffer, "integer number expected. \n");
+        }
+        else if (ERR_catchError(E_STX_TO_EXPECTED))
+        {
+            sprintf(buffer, "to expected. \n");
         }
         else
         {

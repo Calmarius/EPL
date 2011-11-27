@@ -91,6 +91,7 @@ static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
     node = &tree->nodes[tree->nodeCount];
     node->allocated = 1;
     node->id = tree->nodeCount;
+    node->belongsTo = tree;
     tree->nodeCount++;
     return node;
 }
@@ -112,8 +113,10 @@ static struct STX_NodeAttribute *allocateAttribute(struct STX_SyntaxTree *tree)
             tree->attributes, tree->attributesAllocated * sizeof(struct STX_NodeAttribute));
     }
     attribute = &tree->attributes[tree->attributeCount];
+    memset(attribute, 0, sizeof(*attribute));
     attribute->allocated = 1;
     attribute->id = tree->attributeCount;
+    attribute->belongsTo = tree;
     tree->attributeCount++;
     return attribute;
 }
@@ -188,6 +191,121 @@ static int parseBlock(struct SyntaxContext *context)
     return 1;
 }
 
+static int isIntegerNumberToken(enum LEX_TokenType tokenType)
+{
+    return
+        (tokenType == LEX_DECIMAL_NUMBER) ||
+        (tokenType == LEX_OCTAL_NUMBER) ||
+        (tokenType == LEX_HEXA_NUMBER);
+}
+
+/**
+ *   TypePrefix ::=
+ *       (
+ *          (
+ *              'handle' |
+ *              'buffer' '[' integer_number ']'
+ *          ) 'of'
+ *      ) |
+ *      (
+ *         ('pointer' | 'localptr') 'to'
+ *      )
+ *
+ */
+static int parseTypePrefix(struct SyntaxContext *context)
+{
+    const struct LEX_LexerToken *token;
+    struct STX_NodeAttribute *attribute;
+
+    descendNewNode(context, STX_TYPE_PREFIX);
+    token = getCurrent(context);
+
+    if (token->tokenType == LEX_KW_HANDLE)
+    {
+
+        acceptCurrent(context);
+        if (!expect(context, LEX_KW_OF))
+        {
+            ERR_raiseError(E_STX_OF_EXPECTED);
+            return 0;
+        }
+        attribute = allocateAttribute(context->tree);
+        attribute->typePrefixAttributes.type = STX_TP_HANDLE;
+        context->currentNode->attributeIndex = attribute->id;
+    }
+    else if (token->tokenType == LEX_KW_BUFFER)
+    {
+        int elements = 0xDEAD1EE7;
+
+        acceptCurrent(context);
+        if (!expect(context, LEX_LEFT_BRACKET))
+        {
+            ERR_raiseError(E_STX_LEFT_BRACKET_EXPECTED);
+            return 0;
+        }
+        token = getCurrent(context);
+        if (isIntegerNumberToken(token->tokenType))
+        {
+            acceptCurrent(context);
+        }
+        else
+        {
+            ERR_raiseError(E_STX_INTEGER_NUMBER_EXPECTED);
+            return 0;
+        }
+        if (!expect(context, LEX_RIGHT_BRACKET))
+        {
+            ERR_raiseError(E_STX_RIGHT_BRACKET_EXPECTED);
+            return 0;
+        }
+        if (!expect(context, LEX_KW_OF))
+        {
+            ERR_raiseError(E_STX_OF_EXPECTED);
+            return 0;
+        }
+        attribute = allocateAttribute(context->tree);
+        attribute->typePrefixAttributes.type = STX_TP_BUFFER;
+        attribute->typePrefixAttributes.elements = elements;
+        context->currentNode->attributeIndex = attribute->id;
+    }
+    else if (
+        (token->tokenType == LEX_KW_POINTER) ||
+        (token->tokenType == LEX_KW_LOCALPTR))
+    {
+        acceptCurrent(context);
+        if (!expect(context, LEX_KW_TO))
+        {
+            ERR_raiseError(E_STX_TO_EXPECTED);
+            return 0;
+        }
+        attribute = allocateAttribute(context->tree);
+        switch (token->tokenType)
+        {
+            case LEX_KW_POINTER:
+                attribute->typePrefixAttributes.type = STX_TP_POINTER;
+            break;
+            case LEX_KW_LOCALPTR:
+                attribute->typePrefixAttributes.type = STX_TP_LOCALPTR;
+            break;
+            default:
+                assert(0); //< something is really screwed up.
+        }
+        context->currentNode->attributeIndex = attribute->id;
+    }
+
+    ascendToParent(context);
+    return 1;
+
+}
+
+/**
+ * Type ::=
+ *     (
+ *          <TypePrefix> <Type>
+ *      ) |
+ *     built_in_type |
+ *    identifier
+ */
 static int parseType(struct SyntaxContext *context)
 {
     const struct LEX_LexerToken *token;
@@ -205,14 +323,17 @@ static int parseType(struct SyntaxContext *context)
     }
     else
     {
-        ERR_raiseError(E_STX_TYPE_EXPECTED);
-        return 0;
+        if (!parseTypePrefix(context)) return 0;
+        if (!parseType(context)) return 0;
     }
 
     ascendToParent(context);
     return 1;
 }
 
+/**
+ * VariableDeclaration ::= 'vardecl' <Type> identifier
+ */
 static int parseVariableDeclaration(struct SyntaxContext *context)
 {
     const struct LEX_LexerToken *current;
@@ -250,6 +371,9 @@ static int parseVariableDeclaration(struct SyntaxContext *context)
     return 1;
 }
 
+/**
+ * Declarations ::= <VariableDeclaration>*
+ */
 static int parseDeclarations(struct SyntaxContext *context)
 {
     int declarationFound = 0;
