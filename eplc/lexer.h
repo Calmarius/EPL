@@ -22,6 +22,7 @@ enum LEX_TokenType
     LEX_LEFT_BRACKET,
     LEX_RIGHT_BRACKET,
     LEX_EQUALITY,
+    LEX_COMMA,
 
     LEX_KW_ELSE,
     LEX_KW_EXE,
@@ -41,6 +42,10 @@ enum LEX_TokenType
     LEX_KW_BUFFER,
     LEX_KW_OF,
     LEX_KW_TO,
+    LEX_KW_IN,
+    LEX_KW_OUT,
+    LEX_KW_REF,
+    LEX_KW_FUNCTION,
 };
 
 

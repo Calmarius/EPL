@@ -184,9 +184,36 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
     context->currentNode = node;
 }
 
+static int parseStatement(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_STATEMENT);
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * <Block> ::=
+ * '{' <Statement>* '}'
+ */
 static int parseBlock(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_BLOCK);
+    if (!expect(context, LEX_LEFT_BRACE))
+    {
+        ERR_raiseError(E_STX_LEFT_BRACE_EXPECTED);
+        return 0;
+    }
+    while (getCurrent(context)->tokenType != LEX_RIGHT_BRACE)
+    {
+        if (!parseStatement(context)) return 0;
+    }
+
+    if (!expect(context, LEX_RIGHT_BRACE))
+    {
+        ERR_raiseError(E_STX_RIGHT_BRACE_EXPECTED);
+        return 0;
+    }
+
     ascendToParent(context);
     return 1;
 }
@@ -197,6 +224,49 @@ static int isIntegerNumberToken(enum LEX_TokenType tokenType)
         (tokenType == LEX_DECIMAL_NUMBER) ||
         (tokenType == LEX_OCTAL_NUMBER) ||
         (tokenType == LEX_HEXA_NUMBER);
+}
+
+static int getIntegerValue(const struct LEX_LexerToken *token)
+{
+    const char *current = token->start;
+    const char *end = token->start + token->length;
+    int value = 0;
+    int radix = 0;
+
+    switch (token->tokenType)
+    {
+        case LEX_DECIMAL_NUMBER:
+            radix = 10;
+        break;
+        case LEX_OCTAL_NUMBER:
+            radix = 8;
+        break;
+        case LEX_HEXA_NUMBER:
+            current += 2; // skip 0x
+            radix = 16;
+        break;
+        default:
+            assert(0);
+    }
+
+    while (current < end)
+    {
+        char c = *current;
+        int digit;
+        if (('0' <= c) && (c <= '9')) digit = c - '0';
+        else if (radix > 10)
+        {
+            digit = (c | 0x20) - 'a' + 10;
+        }
+        if (digit < 0) break;
+        if (digit >= radix) break;
+        value *= radix;
+        value += digit;
+        current++;
+    }
+
+    return value;
+
 }
 
 /**
@@ -235,7 +305,7 @@ static int parseTypePrefix(struct SyntaxContext *context)
     }
     else if (token->tokenType == LEX_KW_BUFFER)
     {
-        int elements = 0xDEAD1EE7;
+        int elements = 0;
 
         acceptCurrent(context);
         if (!expect(context, LEX_LEFT_BRACKET))
@@ -246,6 +316,7 @@ static int parseTypePrefix(struct SyntaxContext *context)
         token = getCurrent(context);
         if (isIntegerNumberToken(token->tokenType))
         {
+            elements = getIntegerValue(token);
             acceptCurrent(context);
         }
         else
@@ -371,8 +442,129 @@ static int parseVariableDeclaration(struct SyntaxContext *context)
     return 1;
 }
 
+static enum STX_ParameterDirection mapTokenTypeToDirection(enum LEX_TokenType type)
+{
+    switch (type)
+    {
+        case LEX_KW_IN: return STX_PD_IN;
+        case LEX_KW_OUT: return STX_PD_OUT;
+        case LEX_KW_REF: return STX_PD_REF;
+        default:
+            assert(0);
+    }
+    assert(0);
+    return 0;
+}
+
 /**
- * Declarations ::= <VariableDeclaration>*
+ * <Parameter> ::=
+ * ( 'in' | 'out' | 'ref') <Type> identifier
+ */
+static int parseParameter(struct SyntaxContext *context)
+{
+    const struct LEX_LexerToken *token = getCurrent(context);
+    struct STX_NodeAttribute *attribute = allocateAttribute(context->tree);
+
+    descendNewNode(context, STX_PARAMETER);
+
+    if (
+        (token->tokenType != LEX_KW_IN) &&
+        (token->tokenType != LEX_KW_OUT) &&
+        (token->tokenType != LEX_KW_REF))
+    {
+        ERR_raiseError(E_STX_PARAMETER_DIRECTION_EXPECTED);
+        return 0;
+    }
+    attribute->parameterAttributes.direction = mapTokenTypeToDirection(token->tokenType);
+    acceptCurrent(context);
+    if (!parseType(context)) return 0;
+    token = getCurrent(context);
+    if (token->tokenType != LEX_IDENTIFIER)
+    {
+        ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+        return 0;
+    }
+    attribute->name = token->start;
+    attribute->nameLength = token->length;
+    acceptCurrent(context);
+
+    context->currentNode->attributeIndex = attribute->id;
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * <ArgumentList> ::=
+ * (<Parameter> (',' <Parameter>)*)?
+ */
+static int parseArgumentList(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_ARGUMENT_LIST);
+    if (!expect(context, LEX_LEFT_PARENTHESIS))
+    {
+        ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
+        return 0;
+    }
+    if (getCurrent(context)->tokenType != LEX_RIGHT_PARENTHESIS)
+    {
+        if (!parseParameter(context)) return 0;
+        while (getCurrent(context)->tokenType != LEX_RIGHT_PARENTHESIS)
+        {
+            if (!expect(context, LEX_COMMA))
+            {
+                ERR_raiseError(E_STX_COMMA_EXPECTED);
+                return 0;
+            }
+            if (!parseParameter(context)) return 0;
+        }
+    }
+
+    if (!expect(context, LEX_RIGHT_PARENTHESIS))
+    {
+        ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
+        return 0;
+    }
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * <FunctionDeclaration> ::=
+ * 'function' <Type> '(' <ArgumentList> ')' <Block>
+ */
+static int parseFunctionDeclaration(struct SyntaxContext *context)
+{
+    struct STX_NodeAttribute *attribute;
+    const struct LEX_LexerToken *token;
+
+    descendNewNode(context, STX_FUNCTION);
+    attribute = allocateAttribute(context->tree);
+    if (!expect(context, LEX_KW_FUNCTION))
+    {
+        ERR_raiseError(E_STX_FUNCTION_EXPECTED);
+        return 0;
+    }
+    if (!parseType(context)) return 0;
+    token = getCurrent(context);
+    if (token->tokenType != LEX_IDENTIFIER)
+    {
+        ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+        return 0;
+    }
+    attribute->name = token->start;
+    attribute->nameLength = token->length;
+    acceptCurrent(context);
+    if (!parseArgumentList(context)) return 0;
+    if (!parseBlock(context)) return 0;
+
+    context->currentNode->attributeIndex = attribute->id;
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * Declarations ::=
+ * (<VariableDeclaration> | <FunctionDeclaration>)*
  */
 static int parseDeclarations(struct SyntaxContext *context)
 {
@@ -383,10 +575,18 @@ static int parseDeclarations(struct SyntaxContext *context)
     {
         const struct LEX_LexerToken *current = getCurrent(context);
         declarationFound = 0;
-        if (current->tokenType == LEX_KW_VARDECL)
+        switch (current->tokenType)
         {
-            declarationFound = 1;
-            if (!parseVariableDeclaration(context)) return 0;
+            case LEX_KW_VARDECL:
+                declarationFound = 1;
+                if (!parseVariableDeclaration(context)) return 0;
+            break;
+            case LEX_KW_FUNCTION:
+                declarationFound = 1;
+                if (!parseFunctionDeclaration(context)) return 0;
+            break;
+            default:
+            break;
         }
     }
     while (declarationFound);

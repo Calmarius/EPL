@@ -20,8 +20,10 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
+    {"function", 8, LEX_KW_FUNCTION},
     {"handle", 6, LEX_KW_HANDLE},
     {"if", 2, LEX_KW_IF},
+    {"in", 2, LEX_KW_IN},
     {"inc", 3, LEX_KW_INC},
     {"lib", 3, LEX_KW_LIB},
     {"localptr", 8, LEX_KW_LOCALPTR},
@@ -30,7 +32,9 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"module", 6, LEX_KW_MODULE},
     {"next", 4, LEX_KW_NEXT},
     {"of", 2, LEX_KW_OF},
+    {"out", 3, LEX_KW_OUT},
     {"pointer", 7, LEX_KW_POINTER},
+    {"ref", 3, LEX_KW_REF},
     {"to", 2, LEX_KW_TO},
     {"vardecl", 7, LEX_KW_VARDECL},
 };
@@ -446,13 +450,18 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;
+                case ',':
+                    startNewToken(context, LEX_COMMA);
+                    acceptCurrent(context);
+                    finishCurrentToken(context);
+                break;
                 case '(':
-                    startNewToken(context, LEX_LEFT_BRACE);
+                    startNewToken(context, LEX_LEFT_PARENTHESIS);
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;
                 case ')':
-                    startNewToken(context, LEX_RIGHT_BRACE);
+                    startNewToken(context, LEX_RIGHT_PARENTHESIS);
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;

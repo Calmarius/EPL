@@ -58,6 +58,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_LEFT_BRACKET)
         STRINGCASE(LEX_RIGHT_BRACKET)
         STRINGCASE(LEX_EQUALITY)
+        STRINGCASE(LEX_COMMA)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -77,6 +78,10 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_BUFFER)
         STRINGCASE(LEX_KW_OF)
         STRINGCASE(LEX_KW_TO)
+        STRINGCASE(LEX_KW_IN)
+        STRINGCASE(LEX_KW_OUT)
+        STRINGCASE(LEX_KW_REF)
+        STRINGCASE(LEX_KW_FUNCTION)
     }
     return "<UNKNOWN>";
 }
@@ -92,6 +97,10 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_TYPE)
         STRINGCASE(STX_VARDECL)
         STRINGCASE(STX_TYPE_PREFIX)
+        STRINGCASE(STX_PARAMETER)
+        STRINGCASE(STX_ARGUMENT_LIST)
+        STRINGCASE(STX_FUNCTION)
+        STRINGCASE(STX_STATEMENT)
     }
     return "<UNKNOWN>";
 }
@@ -115,6 +124,17 @@ const char *typePrefixTypeToString(enum STX_TypePrefix moduleType)
         STRINGCASE(STX_TP_HANDLE)
         STRINGCASE(STX_TP_LOCALPTR)
         STRINGCASE(STX_TP_POINTER)
+    }
+    return "<UNKNOWN>";
+}
+
+const char *parameterDirectionTypeToString(enum STX_ParameterDirection direction)
+{
+    switch (direction)
+    {
+        STRINGCASE(STX_PD_IN)
+        STRINGCASE(STX_PD_OUT)
+        STRINGCASE(STX_PD_REF)
     }
     return "<UNKNOWN>";
 }
@@ -153,7 +173,18 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
     }
     else if (node->nodeType == STX_MODULE)
     {
-        ptr += sprintf(ptr, "type = %s ", moduleTypeToString(attribute->moduleAttributes.type));
+        ptr += sprintf(
+            ptr,
+            "type = %s ",
+            moduleTypeToString(attribute->moduleAttributes.type));
+    }
+    else if (node->nodeType == STX_PARAMETER)
+    {
+        ptr += sprintf(
+            ptr,
+            "direction = %s ",
+            parameterDirectionTypeToString(
+                attribute->parameterAttributes.direction));
     }
     if (attribute->name)
     {
@@ -303,6 +334,34 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_TO_EXPECTED))
         {
             sprintf(buffer, "to expected. \n");
+        }
+        else if (ERR_catchError(E_STX_PARAMETER_DIRECTION_EXPECTED))
+        {
+            sprintf(buffer, "parameter direction expected. \n");
+        }
+        else if (ERR_catchError(E_STX_LEFT_PARENTHESIS_EXPECTED))
+        {
+            sprintf(buffer, "( expected. \n");
+        }
+        else if (ERR_catchError(E_STX_RIGHT_PARENTHESIS_EXPECTED))
+        {
+            sprintf(buffer, ") expected. \n");
+        }
+        else if (ERR_catchError(E_STX_COMMA_EXPECTED))
+        {
+            sprintf(buffer, ", expected. \n");
+        }
+        else if (ERR_catchError(E_STX_FUNCTION_EXPECTED))
+        {
+            sprintf(buffer, "function expected. \n");
+        }
+        else if (ERR_catchError(E_STX_LEFT_BRACE_EXPECTED))
+        {
+            sprintf(buffer, "{ expected. \n");
+        }
+        else if (ERR_catchError(E_STX_RIGHT_BRACE_EXPECTED))
+        {
+            sprintf(buffer, "} expected. \n");
         }
         else
         {

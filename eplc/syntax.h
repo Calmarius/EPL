@@ -11,7 +11,11 @@ enum STX_NodeType
     STX_BLOCK,
     STX_TYPE,
     STX_VARDECL,
-    STX_TYPE_PREFIX
+    STX_TYPE_PREFIX,
+    STX_PARAMETER,
+    STX_ARGUMENT_LIST,
+    STX_FUNCTION,
+    STX_STATEMENT,
 };
 
 enum STX_ModuleAttribute
@@ -29,6 +33,12 @@ enum STX_TypePrefix
     STX_TP_HANDLE
 };
 
+enum STX_ParameterDirection
+{
+    STX_PD_IN,
+    STX_PD_OUT,
+    STX_PD_REF
+};
 
 /**
  * Stores the attributes of a single node
@@ -49,6 +59,10 @@ struct STX_NodeAttribute
             enum STX_TypePrefix type;
             int elements;
         } typePrefixAttributes;
+        struct
+        {
+            enum STX_ParameterDirection direction;
+        } parameterAttributes;
     };
     const char *name;
     int nameLength;
