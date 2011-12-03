@@ -185,6 +185,7 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             "direction = %s ",
             parameterDirectionTypeToString(
                 attribute->parameterAttributes.direction));
+//dsgadgahdsagjhdgsgjdsag
     }
     if (attribute->name)
     {
