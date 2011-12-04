@@ -17,6 +17,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
 {
     {"break", 5, LEX_KW_BREAK},
     {"buffer", 6, LEX_KW_BUFFER},
+    {"cast", 4, LEX_KW_CAST},
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
@@ -35,6 +36,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"out", 3, LEX_KW_OUT},
     {"pointer", 7, LEX_KW_POINTER},
     {"ref", 3, LEX_KW_REF},
+    {"return", 6, LEX_KW_RETURN},
     {"to", 2, LEX_KW_TO},
     {"vardecl", 7, LEX_KW_VARDECL},
 };
@@ -472,6 +474,11 @@ static int doTokenization(struct LexerContext *context)
                 break;
                 case ']':
                     startNewToken(context, LEX_RIGHT_BRACKET);
+                    acceptCurrent(context);
+                    finishCurrentToken(context);
+                break;
+                case '*':
+                    startNewToken(context, LEX_MULTIPLY_OPERATOR);
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;

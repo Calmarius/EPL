@@ -1,6 +1,8 @@
 #ifndef SYNTAX_H
 #define SYNTAX_H
 
+#include "lexer.h"
+
 struct LEX_LexerToken;
 
 enum STX_NodeType
@@ -15,7 +17,11 @@ enum STX_NodeType
     STX_PARAMETER,
     STX_ARGUMENT_LIST,
     STX_FUNCTION,
-    STX_STATEMENT,
+    STX_EXPRESSION_STATEMENT,
+    STX_TERM,
+    STX_RETURN_STATEMENT,
+    STX_EXPRESSION,
+    STX_OPERATOR
 };
 
 enum STX_ModuleAttribute
@@ -38,6 +44,16 @@ enum STX_ParameterDirection
     STX_PD_IN,
     STX_PD_OUT,
     STX_PD_REF
+};
+
+enum STX_TermType
+{
+   STX_TT_SIMPLE,
+   STX_TT_FUNCTION_CALL,
+   STX_TT_CAST_EXPRESSION,
+   STX_TT_PARENTHETICAL,
+   STX_TT_UNARY_OPERATOR,
+   STX_TT_ARRAY_SUBSCRIPT
 };
 
 /**
@@ -63,6 +79,15 @@ struct STX_NodeAttribute
         {
             enum STX_ParameterDirection direction;
         } parameterAttributes;
+        struct
+        {
+            enum LEX_TokenType type;
+        } operatorAttributes;
+        struct
+        {
+            enum STX_TermType termType;
+            enum LEX_TokenType tokenType;
+        } termAttributes;
     };
     const char *name;
     int nameLength;
@@ -123,6 +148,6 @@ void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 
 void STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
-
+const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
 
 #endif // SYNTAX_H

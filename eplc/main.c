@@ -55,6 +55,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_ADD_OPERATOR)
         STRINGCASE(LEX_LEFT_PARENTHESIS)
         STRINGCASE(LEX_RIGHT_PARENTHESIS)
+        STRINGCASE(LEX_MULTIPLY_OPERATOR)
         STRINGCASE(LEX_LEFT_BRACKET)
         STRINGCASE(LEX_RIGHT_BRACKET)
         STRINGCASE(LEX_EQUALITY)
@@ -81,7 +82,9 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_IN)
         STRINGCASE(LEX_KW_OUT)
         STRINGCASE(LEX_KW_REF)
+        STRINGCASE(LEX_KW_RETURN)
         STRINGCASE(LEX_KW_FUNCTION)
+        STRINGCASE(LEX_KW_CAST)
     }
     return "<UNKNOWN>";
 }
@@ -100,7 +103,11 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_PARAMETER)
         STRINGCASE(STX_ARGUMENT_LIST)
         STRINGCASE(STX_FUNCTION)
-        STRINGCASE(STX_STATEMENT)
+        STRINGCASE(STX_EXPRESSION_STATEMENT)
+        STRINGCASE(STX_TERM)
+        STRINGCASE(STX_RETURN_STATEMENT)
+        STRINGCASE(STX_EXPRESSION)
+        STRINGCASE(STX_OPERATOR)
     }
     return "<UNKNOWN>";
 }
@@ -139,25 +146,27 @@ const char *parameterDirectionTypeToString(enum STX_ParameterDirection direction
     return "<UNKNOWN>";
 }
 
-#undef STRINGCASE
-
-const struct STX_NodeAttribute *getNodeAttribute(const struct STX_SyntaxTreeNode *node)
+const char *termTypeToString(enum STX_TermType type)
 {
-    if (node->attributeIndex == -1)
+    switch (type)
     {
-        return 0;
+        STRINGCASE(STX_TT_CAST_EXPRESSION)
+        STRINGCASE(STX_TT_SIMPLE)
+        STRINGCASE(STX_TT_FUNCTION_CALL)
+        STRINGCASE(STX_TT_PARENTHETICAL)
+        STRINGCASE(STX_TT_UNARY_OPERATOR)
+        STRINGCASE(STX_TT_ARRAY_SUBSCRIPT)
     }
-    else
-    {
-        return &node->belongsTo->attributes[node->attributeIndex];
-    }
+    return "<UNKNOWN>";
 }
+
+#undef STRINGCASE
 
 const char *attributeToString(const struct STX_SyntaxTreeNode *node)
 {
     static char buffer[500];
     char *ptr = buffer;
-    const struct STX_NodeAttribute *attribute = getNodeAttribute(node);
+    const struct STX_NodeAttribute *attribute = STX_getNodeAttribute(node);
 
     if (!attribute)
     {
@@ -178,6 +187,13 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             "type = %s ",
             moduleTypeToString(attribute->moduleAttributes.type));
     }
+    else if (node->nodeType == STX_OPERATOR)
+    {
+        ptr += sprintf(
+            ptr,
+            "type = %s ",
+            tokenTypeToString(attribute->operatorAttributes.type));
+    }
     else if (node->nodeType == STX_PARAMETER)
     {
         ptr += sprintf(
@@ -185,7 +201,16 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             "direction = %s ",
             parameterDirectionTypeToString(
                 attribute->parameterAttributes.direction));
-//dsgadgahdsagjhdgsgjdsag
+    }
+    else if (node->nodeType == STX_TERM)
+    {
+        ptr += sprintf(
+            ptr,
+            "termType = %s tokenType = %s ",
+            termTypeToString(
+                attribute->termAttributes.termType),
+            tokenTypeToString(
+                attribute->termAttributes.tokenType));
     }
     if (attribute->name)
     {
@@ -195,6 +220,7 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             attribute->nameLength,
             attribute->name);
     }
+    *ptr = 0;
     return buffer;
 }
 
@@ -204,11 +230,16 @@ void dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData
     char buffer[500];
     sprintf(
         buffer,
-        "%*s %s %s\n",
+        "%*s %s %s [#%d, %d - %d, <= %d  %d =>]\n",
         level*4,
         "",
         nodeTypeToString(node->nodeType),
-        attributeToString(node));
+        attributeToString(node),
+        node->id,
+        node->firstChildIndex,
+        node->lastChildIndex,
+        node->previousSiblingIndex,
+        node->nextSiblingIndex);
     callback(buffer);
 }
 
@@ -363,6 +394,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_RIGHT_BRACE_EXPECTED))
         {
             sprintf(buffer, "} expected. \n");
+        }
+        else if (ERR_catchError(E_STX_RETURN_EXPECTED))
+        {
+            sprintf(buffer, "return expected. \n");
+        }
+        else if (ERR_catchError(E_STX_TERM_EXPECTED))
+        {
+            sprintf(buffer, "term expected. \n");
         }
         else
         {
