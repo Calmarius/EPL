@@ -58,8 +58,14 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_MULTIPLY_OPERATOR)
         STRINGCASE(LEX_LEFT_BRACKET)
         STRINGCASE(LEX_RIGHT_BRACKET)
-        STRINGCASE(LEX_EQUALITY)
         STRINGCASE(LEX_COMMA)
+        STRINGCASE(LEX_LESS_EQUAL_THAN)
+        STRINGCASE(LEX_LESS_THAN)
+        STRINGCASE(LEX_GREATER_EQUAL_THAN)
+        STRINGCASE(LEX_GREATER_THAN)
+        STRINGCASE(LEX_EQUAL)
+        STRINGCASE(LEX_NOT_EQUAL)
+        STRINGCASE(LEX_SUBTRACT_OPERATOR)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -108,6 +114,7 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_RETURN_STATEMENT)
         STRINGCASE(STX_EXPRESSION)
         STRINGCASE(STX_OPERATOR)
+        STRINGCASE(STX_IF_STATEMENT)
     }
     return "<UNKNOWN>";
 }
@@ -402,6 +409,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_TERM_EXPECTED))
         {
             sprintf(buffer, "term expected. \n");
+        }
+        else if (ERR_catchError(E_STX_IF_EXPECTED))
+        {
+            sprintf(buffer, "if expected. \n");
+        }
+        else if (ERR_catchError(E_STX_UNKNOWN_STATEMENT))
+        {
+            sprintf(buffer, "unknown statement. \n");
         }
         else
         {

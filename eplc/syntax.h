@@ -21,7 +21,8 @@ enum STX_NodeType
     STX_TERM,
     STX_RETURN_STATEMENT,
     STX_EXPRESSION,
-    STX_OPERATOR
+    STX_OPERATOR,
+    STX_IF_STATEMENT
 };
 
 enum STX_ModuleAttribute

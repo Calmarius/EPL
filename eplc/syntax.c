@@ -387,7 +387,14 @@ static int isInfixOperator(const struct LEX_LexerToken *token)
     switch (token->tokenType)
     {
         case LEX_ADD_OPERATOR:
+        case LEX_LESS_EQUAL_THAN:
+        case LEX_LESS_THAN:
+        case LEX_GREATER_EQUAL_THAN:
+        case LEX_GREATER_THAN:
+        case LEX_EQUAL:
+        case LEX_NOT_EQUAL:
         case LEX_MULTIPLY_OPERATOR:
+        case LEX_SUBTRACT_OPERATOR:
             return 1;
         default:
             return 0;
@@ -435,15 +442,23 @@ static int getPrecedenceLevel(enum LEX_TokenType type)
 {
     switch (type)
     {
-        case LEX_ADD_OPERATOR:
+        case LEX_LESS_EQUAL_THAN:
+        case LEX_LESS_THAN:
+        case LEX_GREATER_EQUAL_THAN:
+        case LEX_GREATER_THAN:
+        case LEX_EQUAL:
+        case LEX_NOT_EQUAL:
             return 1;
-        case LEX_MULTIPLY_OPERATOR:
+        case LEX_ADD_OPERATOR:
+        case LEX_SUBTRACT_OPERATOR:
             return 2;
+        case LEX_MULTIPLY_OPERATOR:
+            return 3;
         default:
+            assert(0);
         break;
     }
-    assert(0);
-    return -1;
+    return -100;
 }
 
 static void removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
@@ -485,6 +500,7 @@ static void organizeExpressionTree(struct SyntaxContext *context)
     operatorStack = malloc(count * sizeof(struct STX_SyntaxTreeNode *));
 
     operandStack[++operandPtr] = currentNode;
+    removeNode(context->tree, currentNode);
     currentNode = getNextSibling(context->tree, currentNode);
 
     while (currentNode)
@@ -605,10 +621,51 @@ static int parseReturnStatement(struct SyntaxContext *context)
     return 1;
 }
 
+static int parseStatement(struct SyntaxContext *context);
+static int parseBlock(struct SyntaxContext *context);
+
+
+
+/**
+ * <IfStatement> ::=
+ * 'if' '(' <Expression> ')' <Block> ('else' <Block> )?
+ */
+
+static int parseIfStatement(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_IF_STATEMENT);
+
+    if (!expect(context, LEX_KW_IF))
+    {
+        ERR_raiseError(E_STX_IF_EXPECTED);
+        return 0;
+    }
+    if (!expect(context, LEX_LEFT_PARENTHESIS))
+    {
+        ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
+        return 0;
+    }
+    if (!parseExpression(context)) return 0;
+    if (!expect(context, LEX_RIGHT_PARENTHESIS))
+    {
+        ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
+        return 0;
+    }
+    if (!parseBlock(context)) return 0;
+    if (getCurrent(context)->tokenType == LEX_KW_ELSE)
+    {
+        acceptCurrent(context);
+        if (!parseBlock(context)) return 0;
+    }
+
+    ascendToParent(context);
+    return 1;
+}
+
 /**
  * <Statement> ::=
  * (<ReturnStatement>) |
- * (<Expression>)
+ * (<IfStatement>)
  *
  *
  */
@@ -619,8 +676,11 @@ static int parseStatement(struct SyntaxContext *context)
         case LEX_KW_RETURN:
             if (!parseReturnStatement(context)) return 0;
         break;
+        case LEX_KW_IF:
+            if (!parseIfStatement(context)) return 0;
         default:
-
+            ERR_raiseError(E_STX_UNKNOWN_STATEMENT);
+            return 0;
         break;
     }
     return 1;
@@ -640,7 +700,17 @@ static int parseBlock(struct SyntaxContext *context)
     }
     while (getCurrent(context)->tokenType != LEX_RIGHT_BRACE)
     {
-        if (!parseStatement(context)) return 0;
+        if (!parseStatement(context))
+        {
+            if (ERR_catchError(E_STX_UNKNOWN_STATEMENT))
+            {
+                continue;
+            }
+            else
+            {
+                return 0;
+            }
+        }
     }
 
     if (!expect(context, LEX_RIGHT_BRACE))

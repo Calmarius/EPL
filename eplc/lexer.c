@@ -452,6 +452,11 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;
+                case '-':
+                    startNewToken(context, LEX_SUBTRACT_OPERATOR);
+                    acceptCurrent(context);
+                    finishCurrentToken(context);
+                break;
                 case ',':
                     startNewToken(context, LEX_COMMA);
                     acceptCurrent(context);
@@ -482,8 +487,42 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;
+                case  '>':
+                    startNewToken(context, LEX_GREATER_THAN);
+                    acceptCurrent(context);
+                    if (getCurrent(context) == '=')
+                    {
+                        setCurrentTokenType(context, LEX_GREATER_EQUAL_THAN);
+                        acceptCurrent(context);
+                    }
+                    finishCurrentToken(context);
+                break;
+                case  '<':
+                    startNewToken(context, LEX_LESS_THAN);
+                    acceptCurrent(context);
+                    if (getCurrent(context) == '=')
+                    {
+                        setCurrentTokenType(context, LEX_LESS_EQUAL_THAN);
+                        acceptCurrent(context);
+                    }
+                    finishCurrentToken(context);
+                break;
                 case '=':
-                    startNewToken(context, LEX_EQUALITY);
+                    startNewToken(context, LEX_EQUAL);
+                    acceptCurrent(context);
+                    if (getCurrent(context) == '=')
+                    {
+                        acceptCurrent(context);
+                    }
+                    else
+                    {
+                        ERR_raiseError(E_INVALID_OPERATOR);
+                        return 0;
+                    }
+                    finishCurrentToken(context);
+                break;
+                case '!':
+                    startNewToken(context, LEX_NOT_EQUAL);
                     acceptCurrent(context);
                     if (getCurrent(context) == '=')
                     {
