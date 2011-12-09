@@ -152,12 +152,16 @@ static void acceptCurrent(struct SyntaxContext *context)
     }
 }
 
-static int expect(struct SyntaxContext *context, enum LEX_TokenType type)
+static int expect(
+    struct SyntaxContext *context,
+    enum LEX_TokenType type,
+    enum ERR_ErrorCode errorToRaise)
 {
     const struct LEX_LexerToken *token = getCurrent(context);
 
     if (!token)
     {
+        ERR_raiseError(E_STX_UNEXPECTED_END_OF_FILE);
         return 0;
     }
     if (token->tokenType == type)
@@ -167,6 +171,7 @@ static int expect(struct SyntaxContext *context, enum LEX_TokenType type)
     }
     else
     {
+        ERR_raiseError(errorToRaise);
         return 0;
     }
 }
@@ -285,11 +290,7 @@ static int parseTerm(struct SyntaxContext *context)
     {
         acceptCurrent(context);
         if (!parseExpression(context)) return 0;
-        if (!expect(context, LEX_RIGHT_PARENTHESIS))
-        {
-            ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
         attribute = getCurrentAttribute(context);
         attribute->termAttributes.termType = STX_TT_PARENTHETICAL;
         attribute->termAttributes.tokenType = 0;
@@ -309,33 +310,17 @@ static int parseTerm(struct SyntaxContext *context)
         attribute->termAttributes.termType = STX_TT_UNARY_OPERATOR;
         attribute->termAttributes.tokenType = context->current->tokenType;
         acceptCurrent(context);
-        if (!expect(context, LEX_LEFT_PARENTHESIS))
-        {
-            ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_LEFT_PARENTHESIS, E_STX_LEFT_PARENTHESIS_EXPECTED)) return 0;
         if (!parseExpression(context)) return 0;
-        if (!expect(context, LEX_RIGHT_PARENTHESIS))
-        {
-            ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
     }
     else if (token->tokenType == LEX_KW_CAST)
     {
         acceptCurrent(context);
         if (!parseType(context)) return 0;
-        if (!expect(context, LEX_LEFT_PARENTHESIS))
-        {
-            ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_LEFT_PARENTHESIS, E_STX_LEFT_PARENTHESIS_EXPECTED)) return 0;
         if (!parseExpression(context)) return 0;
-        if (!expect(context, LEX_RIGHT_PARENTHESIS))
-        {
-            ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
         attribute = getCurrentAttribute(context);
         attribute->termAttributes.termType = STX_TT_CAST_EXPRESSION;
         attribute->termAttributes.tokenType = 0;
@@ -355,22 +340,14 @@ static int parseTerm(struct SyntaxContext *context)
             {
                 acceptCurrent(context);
                 if (!parseArgumentList(context)) return 0;
-                if (!expect(context, LEX_RIGHT_PARENTHESIS))
-                {
-                    ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-                    return 0;
-                }
+                if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
             }
             break;
             case LEX_LEFT_BRACKET:
             {
                 acceptCurrent(context);
                 if (!parseExpression(context)) return 0;
-                if (!expect(context, LEX_RIGHT_BRACKET))
-                {
-                    ERR_raiseError(E_STX_RIGHT_BRACKET_EXPECTED);
-                    return 0;
-                }
+                if (!expect(context, LEX_RIGHT_BRACKET, E_STX_RIGHT_BRACKET_EXPECTED)) return 0;
             }
             break;
             default:
@@ -604,20 +581,12 @@ static int parseExpression(struct SyntaxContext *context)
 static int parseReturnStatement(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_RETURN_STATEMENT);
-    if (!expect(context, LEX_KW_RETURN))
-    {
-        ERR_raiseError(E_STX_RETURN_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_RETURN, E_STX_RETURN_EXPECTED)) return 0;
     if (getCurrent(context)->tokenType != LEX_SEMICOLON)
     {
         if (!parseExpression(context)) return 0;
     }
-    if (!expect(context, LEX_SEMICOLON))
-    {
-        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
     ascendToParent(context);
     return 1;
 }
@@ -636,22 +605,10 @@ static int parseIfStatement(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_IF_STATEMENT);
 
-    if (!expect(context, LEX_KW_IF))
-    {
-        ERR_raiseError(E_STX_IF_EXPECTED);
-        return 0;
-    }
-    if (!expect(context, LEX_LEFT_PARENTHESIS))
-    {
-        ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_IF, E_STX_IF_EXPECTED)) return 0;
+    if (!expect(context, LEX_LEFT_PARENTHESIS, E_STX_LEFT_PARENTHESIS_EXPECTED)) return 0;
     if (!parseExpression(context)) return 0;
-    if (!expect(context, LEX_RIGHT_PARENTHESIS))
-    {
-        ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
     if (!parseBlock(context)) return 0;
     if (getCurrent(context)->tokenType == LEX_KW_ELSE)
     {
@@ -672,11 +629,7 @@ static int parseIfStatement(struct SyntaxContext *context)
 static int parseLoopNextStatement(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_LOOP_STATEMENT);
-    if (!expect(context, LEX_KW_LOOP))
-    {
-        ERR_raiseError(E_STX_LOOP_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_LOOP, E_STX_LOOP_EXPECTED)) return 0;
     if (!parseBlock(context)) return 0;
     if (getCurrent(context)->tokenType == LEX_KW_NEXT)
     {
@@ -711,11 +664,7 @@ static int parseSimpleStatement(struct SyntaxContext *context)
             return 0;
         }
     }
-    if (!expect(context, LEX_SEMICOLON))
-    {
-        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
 
     ascendToParent(context);
     return 1;
@@ -761,11 +710,7 @@ static int parseStatement(struct SyntaxContext *context)
 static int parseBlock(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_BLOCK);
-    if (!expect(context, LEX_LEFT_BRACE))
-    {
-        ERR_raiseError(E_STX_LEFT_BRACE_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
     while (getCurrent(context)->tokenType != LEX_RIGHT_BRACE)
     {
         if (!parseStatement(context))
@@ -774,11 +719,7 @@ static int parseBlock(struct SyntaxContext *context)
         }
     }
 
-    if (!expect(context, LEX_RIGHT_BRACE))
-    {
-        ERR_raiseError(E_STX_RIGHT_BRACE_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_RIGHT_BRACE, E_STX_RIGHT_BRACE_EXPECTED)) return 0;
 
     ascendToParent(context);
     return 1;
@@ -861,11 +802,7 @@ static int parseTypePrefix(struct SyntaxContext *context)
     {
 
         acceptCurrent(context);
-        if (!expect(context, LEX_KW_OF))
-        {
-            ERR_raiseError(E_STX_OF_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_KW_OF, E_STX_OF_EXPECTED)) return 0;
         attribute = getCurrentAttribute(context);
         attribute->typePrefixAttributes.type = STX_TP_HANDLE;
     }
@@ -874,11 +811,7 @@ static int parseTypePrefix(struct SyntaxContext *context)
         int elements = 0;
 
         acceptCurrent(context);
-        if (!expect(context, LEX_LEFT_BRACKET))
-        {
-            ERR_raiseError(E_STX_LEFT_BRACKET_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_LEFT_BRACKET, E_STX_LEFT_BRACKET_EXPECTED)) return 0;
         token = getCurrent(context);
         if (isIntegerNumberToken(token->tokenType))
         {
@@ -890,16 +823,8 @@ static int parseTypePrefix(struct SyntaxContext *context)
             ERR_raiseError(E_STX_INTEGER_NUMBER_EXPECTED);
             return 0;
         }
-        if (!expect(context, LEX_RIGHT_BRACKET))
-        {
-            ERR_raiseError(E_STX_RIGHT_BRACKET_EXPECTED);
-            return 0;
-        }
-        if (!expect(context, LEX_KW_OF))
-        {
-            ERR_raiseError(E_STX_OF_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_RIGHT_BRACKET, E_STX_RIGHT_BRACKET_EXPECTED)) return 0;
+        if (!expect(context, LEX_KW_OF, E_STX_OF_EXPECTED)) return 0;
         attribute = getCurrentAttribute(context);
         attribute->typePrefixAttributes.type = STX_TP_BUFFER;
         attribute->typePrefixAttributes.elements = elements;
@@ -909,11 +834,7 @@ static int parseTypePrefix(struct SyntaxContext *context)
         (token->tokenType == LEX_KW_LOCALPTR))
     {
         acceptCurrent(context);
-        if (!expect(context, LEX_KW_TO))
-        {
-            ERR_raiseError(E_STX_TO_EXPECTED);
-            return 0;
-        }
+        if (!expect(context, LEX_KW_TO, E_STX_TO_EXPECTED)) return 0;
         attribute = getCurrentAttribute(context);
         switch (token->tokenType)
         {
@@ -976,11 +897,7 @@ static int parseVariableDeclaration(struct SyntaxContext *context)
 
     descendNewNode(context, STX_VARDECL);
     allocateAttributeForCurrent(context);
-    if (!expect(context, LEX_KW_VARDECL))
-    {
-        ERR_raiseError(E_STX_VARDECL_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_VARDECL, E_STX_VARDECL_EXPECTED)) return 0;
     if (!parseType(context )) return 0;
     current = getCurrent(context);
     if (current->tokenType == LEX_IDENTIFIER)
@@ -1001,12 +918,7 @@ static int parseVariableDeclaration(struct SyntaxContext *context)
         if (!parseExpression(context)) return 0;
     }
 
-    if (!expect(context, LEX_SEMICOLON))
-    {
-        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
-        return 0;
-    }
-
+    if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
 
     ascendToParent(context);
     return 1;
@@ -1072,30 +984,18 @@ static int parseParameter(struct SyntaxContext *context)
 static int parseParameterList(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_ARGUMENT_LIST);
-    if (!expect(context, LEX_LEFT_PARENTHESIS))
-    {
-        ERR_raiseError(E_STX_LEFT_PARENTHESIS_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_LEFT_PARENTHESIS, E_STX_LEFT_PARENTHESIS_EXPECTED)) return 0;
     if (getCurrent(context)->tokenType != LEX_RIGHT_PARENTHESIS)
     {
         if (!parseParameter(context)) return 0;
         while (getCurrent(context)->tokenType != LEX_RIGHT_PARENTHESIS)
         {
-            if (!expect(context, LEX_COMMA))
-            {
-                ERR_raiseError(E_STX_COMMA_EXPECTED);
-                return 0;
-            }
+            if (!expect(context, LEX_COMMA, E_STX_COMMA_EXPECTED)) return 0;
             if (!parseParameter(context)) return 0;
         }
     }
 
-    if (!expect(context, LEX_RIGHT_PARENTHESIS))
-    {
-        ERR_raiseError(E_STX_RIGHT_PARENTHESIS_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
     ascendToParent(context);
     return 1;
 }
@@ -1111,11 +1011,7 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
 
     descendNewNode(context, STX_FUNCTION);
     allocateAttributeForCurrent(context);
-    if (!expect(context, LEX_KW_FUNCTION))
-    {
-        ERR_raiseError(E_STX_FUNCTION_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_FUNCTION, E_STX_FUNCTION_EXPECTED)) return 0;
     if (!parseType(context)) return 0;
     token = getCurrent(context);
     if (token->tokenType != LEX_IDENTIFIER)
@@ -1182,11 +1078,7 @@ static int parseModule(struct SyntaxContext *context)
     descendNewNode(context, STX_MODULE);
     allocateAttributeForCurrent(context);
 
-    if (!expect(context, LEX_KW_MODULE))
-    {
-        ERR_raiseError(E_STX_MODULE_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_MODULE, E_STX_MODULE_EXPECTED)) return 0;
     current = getCurrent(context);
     if (
         (current->tokenType == LEX_KW_EXE) ||
@@ -1215,17 +1107,9 @@ static int parseModule(struct SyntaxContext *context)
         ERR_raiseError(E_STX_MODULE_TYPE_EXPECTED);
         return 0;
     }
-    if (!expect(context, LEX_SEMICOLON))
-    {
-        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
     if (!parseDeclarations(context)) return 0;
-    if (!expect(context, LEX_KW_MAIN))
-    {
-        ERR_raiseError(E_STX_MAIN_EXPECTED);
-        return 0;
-    }
+    if (!expect(context, LEX_KW_MAIN, E_STX_MAIN_EXPECTED)) return 0;
     if (!parseBlock(context)) return 0;
 
     ascendToParent(context);
