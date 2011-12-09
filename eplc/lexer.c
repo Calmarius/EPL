@@ -185,6 +185,22 @@ static char getCurrent(struct LexerContext *context)
     return *context->current;
 }
 
+static int compareBinaryString(
+    const char *str1,
+    int len1,
+    const char *str2,
+    int len2
+)
+{
+    int len = len1 < len2 ? len1 : len2;
+    int d = memcmp(str1, str2, len);
+    if (!d)
+    {
+        d = len1 - len2;
+    }
+    return d;
+}
+
 static int parseIdentifier(struct LexerContext *context)
 {
     if (isLetter(getCurrent(context)))
@@ -206,10 +222,12 @@ static int parseIdentifier(struct LexerContext *context)
             assert(middle >= 0);
             assert(middle < N);
             struct KeywordTokenTypePair *kttp = &keywordMapping[middle];
-            int d = strncmp(
+            int d = compareBinaryString(
                 context->currentToken->start,
+                context->currentToken->length,
                 kttp->keywordText,
-                kttp->keywordLength);
+                kttp->keywordLength
+            );
             if (d < 0)
             {
                 right = middle - 1;

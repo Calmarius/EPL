@@ -212,6 +212,7 @@ static int isUnaryOperator(const struct LEX_LexerToken *token)
     switch (token->tokenType)
     {
         case LEX_KW_REF:
+        case LEX_KW_INC:
             return 1;
         default:
             return 0;
@@ -663,10 +664,71 @@ static int parseIfStatement(struct SyntaxContext *context)
 }
 
 /**
- * <Statement> ::=
- * (<ReturnStatement>) |
- * (<IfStatement>)
+ * <LoopNextStatement> ::=
+ * 'loop' <Block> ('next' <Block>)?
  *
+ */
+
+static int parseLoopNextStatement(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_LOOP_STATEMENT);
+    if (!expect(context, LEX_KW_LOOP))
+    {
+        ERR_raiseError(E_STX_LOOP_EXPECTED);
+        return 0;
+    }
+    if (!parseBlock(context)) return 0;
+    if (getCurrent(context)->tokenType == LEX_KW_NEXT)
+    {
+        acceptCurrent(context);
+        if (!parseBlock(context)) return 0;
+    }
+    ascendToParent(context);
+    return 1;
+}
+
+static int parseVariableDeclaration(struct SyntaxContext *context);
+
+static void setCurrentNodeType(struct SyntaxContext *context, enum STX_NodeType nodeType)
+{
+    context->tree->nodes[context->currentNodeIndex].nodeType = nodeType;
+}
+
+static int parseSimpleStatement(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_EXPRESSION_STATEMENT);
+
+    if (!parseExpression(context))
+    {
+        return 0;
+    }
+    if (getCurrent(context)->tokenType == LEX_ASSIGN_OPERATOR)
+    {
+        setCurrentNodeType(context, STX_ASSIGNMENT);
+        acceptCurrent(context);
+        if (!parseExpression(context))
+        {
+            return 0;
+        }
+    }
+    if (!expect(context, LEX_SEMICOLON))
+    {
+        ERR_raiseError(E_STX_SEMICOLON_EXPECTED);
+        return 0;
+    }
+
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * <Statement> ::=
+ * <ReturnStatement> |
+ * <IfStatement> |
+ * <LoopNextStatement>
+ * <VariableDeclaration> |
+ * <SimpleStatement>
+ * <Expression> ( ':=' <Expression>)?
  *
  */
 static int parseStatement(struct SyntaxContext *context)
@@ -678,9 +740,15 @@ static int parseStatement(struct SyntaxContext *context)
         break;
         case LEX_KW_IF:
             if (!parseIfStatement(context)) return 0;
+        break;
+        case LEX_KW_LOOP:
+            if (!parseLoopNextStatement(context)) return 0;
+        break;
+        case LEX_KW_VARDECL:
+            if (!parseVariableDeclaration(context)) return 0;
+        break;
         default:
-            ERR_raiseError(E_STX_UNKNOWN_STATEMENT);
-            return 0;
+            if (!parseSimpleStatement(context)) return 0;
         break;
     }
     return 1;
@@ -702,14 +770,7 @@ static int parseBlock(struct SyntaxContext *context)
     {
         if (!parseStatement(context))
         {
-            if (ERR_catchError(E_STX_UNKNOWN_STATEMENT))
-            {
-                continue;
-            }
-            else
-            {
-                return 0;
-            }
+            return 0;
         }
     }
 
@@ -906,7 +967,7 @@ static int parseType(struct SyntaxContext *context)
 }
 
 /**
- * VariableDeclaration ::= 'vardecl' <Type> identifier
+ * <VariableDeclaration> ::= 'vardecl' <Type> identifier ( ':=' <Expression> )? ';'
  */
 static int parseVariableDeclaration(struct SyntaxContext *context)
 {
@@ -933,6 +994,11 @@ static int parseVariableDeclaration(struct SyntaxContext *context)
     {
         ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
         return 0;
+    }
+    if (getCurrent(context)->tokenType == LEX_ASSIGN_OPERATOR)
+    {
+        acceptCurrent(context);
+        if (!parseExpression(context)) return 0;
     }
 
     if (!expect(context, LEX_SEMICOLON))

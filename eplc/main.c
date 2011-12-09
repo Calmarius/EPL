@@ -115,6 +115,9 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_EXPRESSION)
         STRINGCASE(STX_OPERATOR)
         STRINGCASE(STX_IF_STATEMENT)
+        STRINGCASE(STX_LOOP_STATEMENT)
+        STRINGCASE(STX_ASSIGNMENT)
+
     }
     return "<UNKNOWN>";
 }
