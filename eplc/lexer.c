@@ -18,6 +18,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"break", 5, LEX_KW_BREAK},
     {"buffer", 6, LEX_KW_BUFFER},
     {"cast", 4, LEX_KW_CAST},
+    {"cleanup", 7, LEX_KW_CLEANUP},
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
@@ -31,6 +32,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"loop", 4, LEX_KW_LOOP},
     {"main", 4, LEX_KW_MAIN},
     {"module", 6, LEX_KW_MODULE},
+    {"namespace", 9, LEX_KW_NAMESPACE},
     {"next", 4, LEX_KW_NEXT},
     {"of", 2, LEX_KW_OF},
     {"out", 3, LEX_KW_OUT},
@@ -418,6 +420,22 @@ static int parseNumber(struct LexerContext *context)
     return 1;
 }
 
+static int parseString(struct LexerContext *context)
+{
+    char c = getCurrent(context);
+    if (c != '"')
+    {
+        ERR_raiseError(E_QUOTE_EXPECTED);
+        return 0;
+    }
+    acceptCurrent(context);
+    while(getCurrent(context) != '"')
+    {
+        acceptCurrent(context);
+    }
+    acceptCurrent(context); // accept the last quote.
+    return 1;
+}
 
 static int doTokenization(struct LexerContext *context)
 {
@@ -463,6 +481,11 @@ static int doTokenization(struct LexerContext *context)
                 case '$':
                     startNewToken(context, LEX_BUILT_IN_TYPE);
                     if (!parseBuiltInType(context)) return 0;
+                    finishCurrentToken(context);
+                break;
+                case '"':
+                    startNewToken(context, LEX_STRING);
+                    if (!parseString(context)) return 0;
                     finishCurrentToken(context);
                 break;
                 case '+':

@@ -277,7 +277,7 @@ static int parseTerm(struct SyntaxContext *context)
     allocateAttributeForCurrent(context);
 
     token = getCurrent(context);
-    if (isNumber(token))
+    if (isNumber(token) || (token->tokenType == LEX_STRING))
     {
         attribute = getCurrentAttribute(context);
         attribute->name = token->start;
@@ -1002,7 +1002,7 @@ static int parseParameterList(struct SyntaxContext *context)
 
 /**
  * <FunctionDeclaration> ::=
- * 'function' <Type> '(' <ParameterList> ')' <Block>
+ * 'function' <Type> '(' <ParameterList> ')' <Block> ( 'cleanup' <Block>)?
  */
 static int parseFunctionDeclaration(struct SyntaxContext *context)
 {
@@ -1025,6 +1025,44 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
     acceptCurrent(context);
     if (!parseParameterList(context)) return 0;
     if (!parseBlock(context)) return 0;
+    if (getCurrent(context)->tokenType == LEX_KW_CLEANUP)
+    {
+        acceptCurrent(context);
+        if (!parseBlock(context)) return 0;
+    }
+
+    ascendToParent(context);
+    return 1;
+}
+
+static int parseDeclarations(struct SyntaxContext *context);
+
+/**
+ * <NamespaceDeclaration> ::=
+ * 'namespace' identifier '{' <Declarations> '}'
+ */
+static int parseNamespaceDeclaration(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_NAMESPACE);
+    allocateAttributeForCurrent(context);
+
+    if (!expect(context, LEX_KW_NAMESPACE, E_STX_NAMESPACE_EXPECTED)) return 0;
+    if (getCurrent(context)->tokenType == LEX_IDENTIFIER)
+    {
+        const struct LEX_LexerToken *token = getCurrent(context);
+        struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+        attr->name = token->start;
+        attr->nameLength = token->length;
+        acceptCurrent(context);
+    }
+    else
+    {
+        ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+        return 0;
+    }
+    if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
+    if (!parseDeclarations(context)) return 0;
+    if (!expect(context, LEX_RIGHT_BRACE, E_STX_RIGHT_BRACE_EXPECTED)) return 0;
 
     ascendToParent(context);
     return 1;
@@ -1032,7 +1070,7 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
 
 /**
  * Declarations ::=
- * (<VariableDeclaration> | <FunctionDeclaration>)*
+ * (<VariableDeclaration> | <FunctionDeclaration> | <NamespaceDeclaration>)*
  */
 static int parseDeclarations(struct SyntaxContext *context)
 {
@@ -1052,6 +1090,10 @@ static int parseDeclarations(struct SyntaxContext *context)
             case LEX_KW_FUNCTION:
                 declarationFound = 1;
                 if (!parseFunctionDeclaration(context)) return 0;
+            break;
+            case LEX_KW_NAMESPACE:
+                declarationFound = 1;
+                if (!parseNamespaceDeclaration(context)) return 0;
             break;
             default:
             break;

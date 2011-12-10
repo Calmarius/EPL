@@ -25,6 +25,7 @@ enum STX_NodeType
     STX_IF_STATEMENT,
     STX_LOOP_STATEMENT,
     STX_ASSIGNMENT,
+    STX_NAMESPACE
 };
 
 enum STX_ModuleAttribute
