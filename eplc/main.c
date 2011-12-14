@@ -67,6 +67,8 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_NOT_EQUAL)
         STRINGCASE(LEX_SUBTRACT_OPERATOR)
         STRINGCASE(LEX_STRING)
+        STRINGCASE(LEX_PERIOD)
+        STRINGCASE(LEX_SCOPE_SEPARATOR)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -94,6 +96,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_CAST)
         STRINGCASE(LEX_KW_CLEANUP)
         STRINGCASE(LEX_KW_NAMESPACE)
+        STRINGCASE(LEX_KW_USING)
     }
     return "<UNKNOWN>";
 }
@@ -121,6 +124,9 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_LOOP_STATEMENT)
         STRINGCASE(STX_ASSIGNMENT)
         STRINGCASE(STX_NAMESPACE)
+        STRINGCASE(STX_USING)
+        STRINGCASE(STX_QUALIFIED_NAME)
+        STRINGCASE(STX_QUALIFIED_NAME_PART)
 
     }
     return "<UNKNOWN>";
@@ -279,23 +285,23 @@ void compileFile(const char *fileName, NotificationCallback callback)
     {
         sprintf(buffer, "At line %d, column %d:", lexerResult.linePos, lexerResult.columnPos);
         callback(buffer);
-        if (ERR_catchError(E_INVALID_CHARACTER))
+        if (ERR_catchError(E_LEX_INVALID_CHARACTER))
         {
             sprintf(buffer, "Invalid character.\n");
         }
-        else if (ERR_catchError(E_INVALID_BUILT_IN_TYPE_LETTER))
+        else if (ERR_catchError(E_LEX_INVALID_BUILT_IN_TYPE_LETTER))
         {
             sprintf(buffer, "Invalid built in type.\n");
         }
-        else if (ERR_catchError(E_INVALID_OPERATOR))
+        else if (ERR_catchError(E_LEX_INVALID_OPERATOR))
         {
             sprintf(buffer, "Invalid operator\n");
         }
-        else if (ERR_catchError(E_MISSING_EXPONENTIAL_PART))
+        else if (ERR_catchError(E_LEX_MISSING_EXPONENTIAL_PART))
         {
             sprintf(buffer, "Missing exponential part.\n");
         }
-        else if (ERR_catchError(E_HEXA_FLOATING_POINT_NOT_ALLOWED))
+        else if (ERR_catchError(E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED))
         {
             sprintf(buffer, "Hexa floating point is not allowed.\n");
         }
@@ -424,6 +430,30 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_UNKNOWN_STATEMENT))
         {
             sprintf(buffer, "unknown statement. \n");
+        }
+        else if (ERR_catchError(E_STX_LOOP_EXPECTED))
+        {
+            sprintf(buffer, "loop expected. \n");
+        }
+        else if (ERR_catchError(E_STX_ASSIGNMENT_OR_EXPRESSION_STATEMENT_EXPECTED))
+        {
+            sprintf(buffer, "Assignment or expression statement expected. \n");
+        }
+        else if (ERR_catchError(E_STX_UNEXPECTED_END_OF_FILE))
+        {
+            sprintf(buffer, "Unexpected end of file. \n");
+        }
+        else if (ERR_catchError(E_STX_NAMESPACE_EXPECTED))
+        {
+            sprintf(buffer, "namespace expected. \n");
+        }
+        else if (ERR_catchError(E_STX_USING_EXPECTED))
+        {
+            sprintf(buffer, "using expected. \n");
+        }
+        else if (ERR_catchError(E_STX_PERIOD_EXPECTED))
+        {
+            sprintf(buffer, ". expected. \n");
         }
         else
         {

@@ -31,6 +31,8 @@ enum LEX_TokenType
     LEX_GREATER_EQUAL_THAN,
     LEX_NOT_EQUAL,
     LEX_STRING,
+    LEX_PERIOD,
+    LEX_SCOPE_SEPARATOR,
 
     LEX_KW_ELSE,
     LEX_KW_EXE,
@@ -57,7 +59,8 @@ enum LEX_TokenType
     LEX_KW_RETURN,
     LEX_KW_CAST,
     LEX_KW_CLEANUP,
-    LEX_KW_NAMESPACE
+    LEX_KW_NAMESPACE,
+    LEX_KW_USING
 };
 
 

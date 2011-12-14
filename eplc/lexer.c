@@ -40,6 +40,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"ref", 3, LEX_KW_REF},
     {"return", 6, LEX_KW_RETURN},
     {"to", 2, LEX_KW_TO},
+    {"using", 5, LEX_KW_USING},
     {"vardecl", 7, LEX_KW_VARDECL},
 };
 
@@ -258,7 +259,7 @@ static int parseBuiltInType(struct LexerContext *context)
     }
     else
     {
-        ERR_raiseError(E_IMPOSSIBLE_ERROR);
+        ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
         return 0;
     }
     switch (getCurrent(context))
@@ -269,7 +270,7 @@ static int parseBuiltInType(struct LexerContext *context)
             acceptCurrent(context);
         break;
         default:
-            ERR_raiseError(E_INVALID_BUILT_IN_TYPE_LETTER);
+            ERR_raiseError(E_LEX_INVALID_BUILT_IN_TYPE_LETTER);
             return 0;
     }
     while (isDecimal(getCurrent(context)))
@@ -297,7 +298,7 @@ static int parseExponentialPart(struct LexerContext *context)
     }
     if (!c)
     {
-        ERR_raiseError(E_MISSING_EXPONENTIAL_PART);
+        ERR_raiseError(E_LEX_MISSING_EXPONENTIAL_PART);
         return 0;
     }
     return 1;
@@ -351,7 +352,7 @@ static int parseHexadecimalPart(struct LexerContext *context)
     }
     if (getCurrent(context) == '.')
     {
-        ERR_raiseError(E_HEXA_FLOATING_POINT_NOT_ALLOWED);
+        ERR_raiseError(E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED);
         return 0;
     }
     return 1;
@@ -366,7 +367,7 @@ static int parseOctalNumber(struct LexerContext *context)
     }
     else
     {
-        ERR_raiseError(E_IMPOSSIBLE_ERROR);
+        ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
         return 0;
     }
     if ((getCurrent(context) | 0x20) == 'x')
@@ -414,7 +415,7 @@ static int parseNumber(struct LexerContext *context)
     }
     else
     {
-        ERR_raiseError(E_IMPOSSIBLE_ERROR);
+        ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
         return 0;
     }
     return 1;
@@ -425,7 +426,7 @@ static int parseString(struct LexerContext *context)
     char c = getCurrent(context);
     if (c != '"')
     {
-        ERR_raiseError(E_QUOTE_EXPECTED);
+        ERR_raiseError(E_LEX_QUOTE_EXPECTED);
         return 0;
     }
     acceptCurrent(context);
@@ -528,6 +529,11 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     finishCurrentToken(context);
                 break;
+                case '.':
+                    startNewToken(context, LEX_PERIOD);
+                    acceptCurrent(context);
+                    finishCurrentToken(context);
+                break;
                 case  '>':
                     startNewToken(context, LEX_GREATER_THAN);
                     acceptCurrent(context);
@@ -557,7 +563,7 @@ static int doTokenization(struct LexerContext *context)
                     }
                     else
                     {
-                        ERR_raiseError(E_INVALID_OPERATOR);
+                        ERR_raiseError(E_LEX_INVALID_OPERATOR);
                         return 0;
                     }
                     finishCurrentToken(context);
@@ -571,7 +577,7 @@ static int doTokenization(struct LexerContext *context)
                     }
                     else
                     {
-                        ERR_raiseError(E_INVALID_OPERATOR);
+                        ERR_raiseError(E_LEX_INVALID_OPERATOR);
                         return 0;
                     }
                     finishCurrentToken(context);
@@ -583,15 +589,20 @@ static int doTokenization(struct LexerContext *context)
                     {
                         acceptCurrent(context);
                     }
+                    else if (getCurrent(context) == ':')
+                    {
+                        setCurrentTokenType(context, LEX_SCOPE_SEPARATOR);
+                        acceptCurrent(context);
+                    }
                     else
                     {
-                        ERR_raiseError(E_INVALID_OPERATOR);
+                        ERR_raiseError(E_LEX_INVALID_OPERATOR);
                         return 0;
                     }
                     finishCurrentToken(context);
                 break;
                 default:
-                    ERR_raiseError(E_INVALID_CHARACTER);
+                    ERR_raiseError(E_LEX_INVALID_CHARACTER);
                     return 0;
             }
         }
