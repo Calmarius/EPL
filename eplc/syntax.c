@@ -143,7 +143,25 @@ static enum LEX_TokenType getCurrentTokenType(struct SyntaxContext *context)
     return context->current->tokenType;
 }
 
-static void acceptCurrent(struct SyntaxContext *context)
+static int isCommentTokenType(enum LEX_TokenType tokenType)
+{
+    switch (tokenType)
+    {
+        case LEX_EOL_COMMENT:
+        case LEX_BLOCK_COMMENT:
+            return 1;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type);
+static void allocateAttributeForCurrent(struct SyntaxContext *context);
+static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *context);
+static void ascendToParent(struct SyntaxContext *context);
+
+static void advance(struct SyntaxContext *context)
 {
     assert(context->current);
     if (context->tokensRemaining)
@@ -157,12 +175,36 @@ static void acceptCurrent(struct SyntaxContext *context)
     }
 }
 
+static void skipComments(struct SyntaxContext *context)
+{
+    while (isCommentTokenType(getCurrentTokenType(context)))
+    {
+        /*struct STX_NodeAttribute *attr;
+        const struct LEX_LexerToken *token = getCurrent(context);
+        descendNewNode(context, STX_COMMENT);
+        allocateAttributeForCurrent(context);
+        attr = getCurrentAttribute(context);
+        attr->name = token->start;
+        attr->nameLength = token->length;
+        ascendToParent(context);*/
+        advance(context);
+    }
+}
+
+static void acceptCurrent(struct SyntaxContext *context)
+{
+    advance(context);
+    skipComments(context);
+}
+
 static int expect(
     struct SyntaxContext *context,
     enum LEX_TokenType type,
     enum ERR_ErrorCode errorToRaise)
 {
-    const struct LEX_LexerToken *token = getCurrent(context);
+    const struct LEX_LexerToken *token;
+
+    token = getCurrent(context);
 
     if (!token)
     {
@@ -264,10 +306,12 @@ static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *conte
     return &context->tree->attributes[context->currentAttributeIndex];
 }
 
+static int parseQualifiedname(struct SyntaxContext *context);
+
 /**
  * <Term> ::=
  * ( number |
- * identifier  |
+ * <QualifiedName>  |
  * unaryOperator '(' <Expression> ')' |
  * '(' <Expression> ')' |
  * 'cast' <Type> '(' <Expression> ')' )
@@ -302,12 +346,13 @@ static int parseTerm(struct SyntaxContext *context)
     }
     else if (token->tokenType == LEX_IDENTIFIER)
     {
-        attribute = getCurrentAttribute(context);
+        if (!parseQualifiedname(context)) return 0;
+        /*attribute = getCurrentAttribute(context);
         attribute->termAttributes.termType = STX_TT_SIMPLE;
         attribute->termAttributes.tokenType = context->current->tokenType;
         attribute->name = token->start;
         attribute->nameLength = token->length;
-        acceptCurrent(context);
+        acceptCurrent(context);*/
     }
     else if (isUnaryOperator(token))
     {
@@ -397,7 +442,7 @@ const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTree
     }
 }
 
-static struct STX_SyntaxTreeNode *getFirstChild(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
+/*static struct STX_SyntaxTreeNode *getFirstChild(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
 {
     if (node->firstChildIndex >= 0)
     {
@@ -407,9 +452,9 @@ static struct STX_SyntaxTreeNode *getFirstChild(struct STX_SyntaxTree *tree, str
     {
         return 0;
     }
-}
+}*/
 
-static struct STX_SyntaxTreeNode *getNextSibling(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
+/*static struct STX_SyntaxTreeNode *getNextSibling(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
 {
     if (node->nextSiblingIndex >= 0)
     {
@@ -419,9 +464,9 @@ static struct STX_SyntaxTreeNode *getNextSibling(struct STX_SyntaxTree *tree, st
     {
         return 0;
     }
-}
+}*/
 
-static int getPrecedenceLevel(enum LEX_TokenType type)
+/*static int getPrecedenceLevel(enum LEX_TokenType type)
 {
     switch (type)
     {
@@ -442,9 +487,9 @@ static int getPrecedenceLevel(enum LEX_TokenType type)
         break;
     }
     return -100;
-}
+}*/
 
-static void removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
+/*static void removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
 {
 
     if (node->previousSiblingIndex >= 0)
@@ -463,9 +508,9 @@ static void removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *n
     {
         tree->nodes[node->parentIndex].lastChildIndex = node->previousSiblingIndex;
     }
-}
+}*/
 
-static void organizeExpressionTree(struct SyntaxContext *context)
+/*static void organizeExpressionTree(struct SyntaxContext *context)
 {
     int count;
     struct STX_SyntaxTreeNode **operandStack;
@@ -543,11 +588,11 @@ static void organizeExpressionTree(struct SyntaxContext *context)
 
     free(operandStack);
     free(operatorStack);
-}
+}*/
 
 /**
  * <Expression> ::=
- * <Term> ((infixOperator | identifier) <Term>)*
+ * <Term> ((infixOperator | <QualifiedName>) <Term>)*
  */
 static int parseExpression(struct SyntaxContext *context)
 {
@@ -566,15 +611,22 @@ static int parseExpression(struct SyntaxContext *context)
         }
         descendNewNode(context, STX_OPERATOR);
         {
-            allocateAttributeForCurrent(context);
-            attribute = getCurrentAttribute(context);
-            attribute->operatorAttributes.type = getCurrent(context)->tokenType;
+            if (token->tokenType == LEX_IDENTIFIER)
+            {
+                if (!parseQualifiedname(context)) return 0;
+            }
+            else
+            {
+                allocateAttributeForCurrent(context);
+                attribute = getCurrentAttribute(context);
+                attribute->operatorAttributes.type = getCurrent(context)->tokenType;
+                acceptCurrent(context);
+            }
         }
         ascendToParent(context);
-        acceptCurrent(context);
         if (!parseTerm(context)) return 0;
     }
-    organizeExpressionTree(context);
+    //organizeExpressionTree(context);
     ascendToParent(context);
     return 1;
 }
@@ -875,12 +927,16 @@ static int parseType(struct SyntaxContext *context)
     allocateAttributeForCurrent(context);
     token = getCurrent(context);
 
-    if ((token->tokenType == LEX_BUILT_IN_TYPE) || (token->tokenType == LEX_IDENTIFIER))
+    if (token->tokenType == LEX_BUILT_IN_TYPE)
     {
         struct STX_NodeAttribute *attr = getCurrentAttribute(context);
         attr->name = token->start;
         attr->nameLength = token->length;
         acceptCurrent(context);
+    }
+    else if (token->tokenType == LEX_IDENTIFIER)
+    {
+        if (!parseQualifiedname(context)) return 0;
     }
     else
     {
@@ -1075,14 +1131,13 @@ static int parseNamespaceDeclaration(struct SyntaxContext *context)
 
 /**
  * QualifiedName ::=
- * identifier ( '.' identifier)*
+ * identifier ( '::' identifier)*
  */
 
 static int parseQualifiedname(struct SyntaxContext *context)
  {
     descendNewNode(context, STX_QUALIFIED_NAME);
 
-    if (!expect(context, LEX_KW_USING, E_STX_USING_EXPECTED)) return 0;
     if (getCurrentTokenType(context) == LEX_IDENTIFIER)
     {
         const struct LEX_LexerToken *current = getCurrent(context);
@@ -1135,6 +1190,7 @@ static int parseUsingDeclaration(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_USING);
 
+    if (!expect(context, LEX_KW_USING, E_STX_USING_EXPECTED)) return 0;
     if (!parseQualifiedname(context)) return 0;
     if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
 
@@ -1143,8 +1199,65 @@ static int parseUsingDeclaration(struct SyntaxContext *context)
 }
 
 /**
+ * StructDeclaration ::=
+ * 'struct' identifier '{'  (<Type> identifier ';' )* '}'
+ */
+static int parseStructDeclaration(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_STRUCT);
+
+    if (!expect(context, LEX_KW_STRUCT, E_STX_STRUCT_EXPECTED)) return 0;
+    if (getCurrentTokenType(context) == LEX_IDENTIFIER)
+    {
+        allocateAttributeForCurrent(context);
+        struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+        const struct LEX_LexerToken *token = getCurrent(context);
+        attr->name = token->start;
+        attr->nameLength = token->length;
+        acceptCurrent(context);
+    }
+    else
+    {
+        ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+        return 0;
+    }
+    if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
+    while (getCurrentTokenType(context) != LEX_RIGHT_BRACE)
+    {
+        descendNewNode(context, STX_FIELD);
+        allocateAttributeForCurrent(context);
+        if (!parseType(context)) return 0;
+        if (getCurrentTokenType(context) == LEX_IDENTIFIER)
+        {
+            const struct LEX_LexerToken *token = getCurrent(context);
+            struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+            attr->name = token->start;
+            attr->nameLength = token->length;
+            acceptCurrent(context);
+        }
+        else
+        {
+            ERR_raiseError(E_STX_IDENTIFIER_EXPECTED);
+            return 0;
+        }
+
+        if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
+        ascendToParent(context);
+    }
+
+    if (!expect(context, LEX_RIGHT_BRACE, E_STX_RIGHT_BRACE_EXPECTED)) return 0;
+
+    ascendToParent(context);
+    return 1;
+}
+
+/**
  * Declarations ::=
- * (<VariableDeclaration> | <FunctionDeclaration> | <NamespaceDeclaration>)* | <UsingDeclaration>
+ * (<VariableDeclaration> |
+ * <FunctionDeclaration> |
+ * <NamespaceDeclaration> |
+ * <UsingDeclaration> |
+ * <StructDeclaration>)*
  */
 static int parseDeclarations(struct SyntaxContext *context)
 {
@@ -1172,6 +1285,10 @@ static int parseDeclarations(struct SyntaxContext *context)
             case LEX_KW_USING:
                 declarationFound = 1;
                 if (!parseUsingDeclaration(context)) return 0;
+            break;
+            case  LEX_KW_STRUCT:
+                declarationFound = 1;
+                if (!parseStructDeclaration(context)) return 0;
             break;
             default:
             break;

@@ -29,6 +29,9 @@ enum STX_NodeType
     STX_USING,
     STX_QUALIFIED_NAME,
     STX_QUALIFIED_NAME_PART,
+    STX_STRUCT,
+    STX_FIELD,
+    STX_COMMENT
 };
 
 enum STX_ModuleAttribute

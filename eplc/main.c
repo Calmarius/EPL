@@ -69,6 +69,9 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_STRING)
         STRINGCASE(LEX_PERIOD)
         STRINGCASE(LEX_SCOPE_SEPARATOR)
+        STRINGCASE(LEX_DIVISION_OPERATOR)
+        STRINGCASE(LEX_BLOCK_COMMENT)
+        STRINGCASE(LEX_EOL_COMMENT)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -97,6 +100,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_CLEANUP)
         STRINGCASE(LEX_KW_NAMESPACE)
         STRINGCASE(LEX_KW_USING)
+        STRINGCASE(LEX_KW_STRUCT)
     }
     return "<UNKNOWN>";
 }
@@ -127,6 +131,9 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_USING)
         STRINGCASE(STX_QUALIFIED_NAME)
         STRINGCASE(STX_QUALIFIED_NAME_PART)
+        STRINGCASE(STX_STRUCT)
+        STRINGCASE(STX_FIELD)
+        STRINGCASE(STX_COMMENT)
 
     }
     return "<UNKNOWN>";

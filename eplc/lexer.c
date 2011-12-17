@@ -39,6 +39,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"pointer", 7, LEX_KW_POINTER},
     {"ref", 3, LEX_KW_REF},
     {"return", 6, LEX_KW_RETURN},
+    {"struct", 6, LEX_KW_STRUCT},
     {"to", 2, LEX_KW_TO},
     {"using", 5, LEX_KW_USING},
     {"vardecl", 7, LEX_KW_VARDECL},
@@ -517,6 +518,41 @@ static int doTokenization(struct LexerContext *context)
                 case '[':
                     startNewToken(context, LEX_LEFT_BRACKET);
                     acceptCurrent(context);
+                    finishCurrentToken(context);
+                break;
+                case '/':
+                    startNewToken(context, LEX_DIVISION_OPERATOR);
+                    acceptCurrent(context);
+                    if (getCurrent(context) == '*')
+                    {
+                        setCurrentTokenType(context, LEX_BLOCK_COMMENT);
+                        acceptCurrent(context);
+                        for (;;)
+                        {
+                            if (getCurrent(context) == '*')
+                            {
+                                acceptCurrent(context);
+                                if (getCurrent(context) == '/')
+                                {
+                                    acceptCurrent(context);
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                acceptCurrent(context);
+                            }
+                        }
+                    }
+                    else if (getCurrent(context) == '/')
+                    {
+                        setCurrentTokenType(context, LEX_EOL_COMMENT);
+                        acceptCurrent(context);
+                        while ((getCurrent(context) != '\n') && (getCurrent(context) != '\r'))
+                        {
+                            acceptCurrent(context);
+                        }
+                    }
                     finishCurrentToken(context);
                 break;
                 case ']':
