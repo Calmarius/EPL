@@ -17,11 +17,15 @@ static struct KeywordTokenTypePair keywordMapping[] =
 {
     {"break", 5, LEX_KW_BREAK},
     {"buffer", 6, LEX_KW_BUFFER},
+    {"case", 4, LEX_KW_CASE},
     {"cast", 4, LEX_KW_CAST},
     {"cleanup", 7, LEX_KW_CLEANUP},
+    {"continue", 8, LEX_KW_CONTINUE},
+    {"default", 7, LEX_KW_DEFAULT},
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
+    {"funcptr", 7, LEX_KW_FUNCPTR},
     {"function", 8, LEX_KW_FUNCTION},
     {"handle", 6, LEX_KW_HANDLE},
     {"if", 2, LEX_KW_IF},
@@ -40,6 +44,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"ref", 3, LEX_KW_REF},
     {"return", 6, LEX_KW_RETURN},
     {"struct", 6, LEX_KW_STRUCT},
+    {"switch", 6, LEX_KW_SWITCH},
     {"to", 2, LEX_KW_TO},
     {"using", 5, LEX_KW_USING},
     {"vardecl", 7, LEX_KW_VARDECL},
@@ -634,21 +639,17 @@ static int doTokenization(struct LexerContext *context)
                     finishCurrentToken(context);
                 break;
                 case ':':
-                    startNewToken(context, LEX_ASSIGN_OPERATOR);
+                    startNewToken(context, LEX_COLON);
                     acceptCurrent(context);
                     if (getCurrent(context) == '=')
                     {
+                        setCurrentTokenType(context, LEX_ASSIGN_OPERATOR);
                         acceptCurrent(context);
                     }
                     else if (getCurrent(context) == ':')
                     {
                         setCurrentTokenType(context, LEX_SCOPE_SEPARATOR);
                         acceptCurrent(context);
-                    }
-                    else
-                    {
-                        ERR_raiseError(E_LEX_INVALID_OPERATOR);
-                        return 0;
                     }
                     finishCurrentToken(context);
                 break;

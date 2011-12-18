@@ -75,6 +75,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_DOCUMENTATION_BLOCK_COMMENT)
         STRINGCASE(LEX_DOCUMENTATION_EOL_COMMENT)
         STRINGCASE(LEX_DOCUMENTATION_EOL_BACK_COMMENT)
+        STRINGCASE(LEX_COLON)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -104,6 +105,11 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_NAMESPACE)
         STRINGCASE(LEX_KW_USING)
         STRINGCASE(LEX_KW_STRUCT)
+        STRINGCASE(LEX_KW_FUNCPTR)
+        STRINGCASE(LEX_KW_CASE)
+        STRINGCASE(LEX_KW_CONTINUE)
+        STRINGCASE(LEX_KW_SWITCH)
+        STRINGCASE(LEX_KW_DEFAULT)
     }
     return "<UNKNOWN>";
 }
@@ -137,6 +143,10 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_STRUCT)
         STRINGCASE(STX_FIELD)
         STRINGCASE(STX_COMMENT)
+        STRINGCASE(STX_FUNCPTR)
+        STRINGCASE(STX_SWITCH)
+        STRINGCASE(STX_CASE)
+
 
     }
     return "<UNKNOWN>";
@@ -241,6 +251,21 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
                 attribute->termAttributes.termType),
             tokenTypeToString(
                 attribute->termAttributes.tokenType));
+    }
+    else if (node->nodeType == STX_CASE)
+    {
+        if (attribute->caseAttributes.isDefault)
+        {
+            ptr += sprintf(ptr, "default ");
+        }
+        else
+        {
+            ptr += sprintf(
+                ptr,
+                "caseValue = %d ",
+                    attribute->caseAttributes.caseValue);
+
+        }
     }
     if (attribute->name)
     {
@@ -472,6 +497,34 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_PERIOD_EXPECTED))
         {
             sprintf(buffer, ". expected. \n");
+        }
+        else if (ERR_catchError(E_STX_STRUCT_EXPECTED))
+        {
+            sprintf(buffer, "struct expected. \n");
+        }
+        else if (ERR_catchError(E_STX_FUNCPTR_EXPECTED))
+        {
+            sprintf(buffer, "funcptr expected. \n");
+        }
+        else if (ERR_catchError(E_STX_CASE_EXPECTED))
+        {
+            sprintf(buffer, "case expected. \n");
+        }
+        else if (ERR_catchError(E_STX_COLON_EXPECTED))
+        {
+            sprintf(buffer, ": expected. \n");
+        }
+        else if (ERR_catchError(E_STX_BREAK_OR_CONTINUE_EXPECTED))
+        {
+            sprintf(buffer, "break or continue expected. \n");
+        }
+        else if (ERR_catchError(E_STX_SWITCH_EXPECTED))
+        {
+            sprintf(buffer, "switch expected. \n");
+        }
+        else if (ERR_catchError(E_STX_CASE_OR_DEFAULT_EXPECTED))
+        {
+            sprintf(buffer, "case or default expected. \n");
         }
         else
         {

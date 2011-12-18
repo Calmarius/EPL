@@ -31,7 +31,10 @@ enum STX_NodeType
     STX_QUALIFIED_NAME_PART,
     STX_STRUCT,
     STX_FIELD,
-    STX_COMMENT
+    STX_COMMENT,
+    STX_FUNCPTR,
+    STX_SWITCH,
+    STX_CASE,
 };
 
 enum STX_ModuleAttribute
@@ -98,6 +101,11 @@ struct STX_NodeAttribute
             enum STX_TermType termType;
             enum LEX_TokenType tokenType;
         } termAttributes;
+        struct
+        {
+            int caseValue;
+            int isDefault;
+        } caseAttributes;
     };
     const char *name;
     int nameLength;
