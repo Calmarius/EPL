@@ -39,7 +39,7 @@ const char *readFileContents(const char *filename)
 
 const char *tokenTypeToString(enum LEX_TokenType type)
 {
-    switch (type)
+     switch (type)
     {
         STRINGCASE(LEX_UNKNOWN)
         STRINGCASE(LEX_IDENTIFIER)
@@ -72,6 +72,9 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_DIVISION_OPERATOR)
         STRINGCASE(LEX_BLOCK_COMMENT)
         STRINGCASE(LEX_EOL_COMMENT)
+        STRINGCASE(LEX_DOCUMENTATION_BLOCK_COMMENT)
+        STRINGCASE(LEX_DOCUMENTATION_EOL_COMMENT)
+        STRINGCASE(LEX_DOCUMENTATION_EOL_BACK_COMMENT)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -247,6 +250,14 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             attribute->nameLength,
             attribute->name);
     }
+    if (attribute->comment)
+    {
+        ptr += sprintf(
+            ptr,
+            "comment = '%.*s' ",
+            attribute->commentLength,
+            attribute->comment);
+    }
     *ptr = 0;
     return buffer;
 }
@@ -327,7 +338,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
             struct LEX_LexerToken *token = &tokens[i];
             sprintf(
                 buffer,
-                "    %-20s  %20.*s (%-5d:%-3d) - (%-5d:%-3d)\n",
+                "    %-40s  %20.*s (%-5d:%-3d) - (%-5d:%-3d)\n",
                 tokenTypeToString(token->tokenType),
                 token->length > 20 ? 20 : token->length,
                 token->start,

@@ -18,6 +18,8 @@ struct SyntaxContext
     const struct LEX_LexerToken  *current;
     int currentNodeIndex;
     int currentAttributeIndex;
+
+    const struct LEX_LexerToken *latestComment;
 };
 
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree);
@@ -149,6 +151,9 @@ static int isCommentTokenType(enum LEX_TokenType tokenType)
     {
         case LEX_EOL_COMMENT:
         case LEX_BLOCK_COMMENT:
+        case LEX_DOCUMENTATION_BLOCK_COMMENT:
+        case LEX_DOCUMENTATION_EOL_BACK_COMMENT:
+        case LEX_DOCUMENTATION_EOL_COMMENT:
             return 1;
         default:
             return 0;
@@ -175,18 +180,56 @@ static void advance(struct SyntaxContext *context)
     }
 }
 
+static int isForwardDocumentationCommentType(enum LEX_TokenType tokenType)
+{
+    switch (tokenType)
+    {
+        case LEX_DOCUMENTATION_BLOCK_COMMENT:
+        case LEX_DOCUMENTATION_EOL_COMMENT:
+            return 1;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+static int isBackDocumentationCommentType(enum LEX_TokenType tokenType)
+{
+    switch (tokenType)
+    {
+        case LEX_DOCUMENTATION_EOL_BACK_COMMENT:
+            return 1;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
+static struct STX_SyntaxTreeNode *getCurrentNode(struct SyntaxContext *context)
+{
+    return &context->tree->nodes[context->currentNodeIndex];
+}
+
 static void skipComments(struct SyntaxContext *context)
 {
     while (isCommentTokenType(getCurrentTokenType(context)))
     {
-        /*struct STX_NodeAttribute *attr;
-        const struct LEX_LexerToken *token = getCurrent(context);
-        descendNewNode(context, STX_COMMENT);
-        allocateAttributeForCurrent(context);
-        attr = getCurrentAttribute(context);
-        attr->name = token->start;
-        attr->nameLength = token->length;
-        ascendToParent(context);*/
+        if (isForwardDocumentationCommentType(getCurrentTokenType(context)))
+        {
+            context->latestComment = getCurrent(context);
+        }
+        else if (isBackDocumentationCommentType(getCurrentTokenType(context)))
+        {
+            struct STX_SyntaxTreeNode *currentNode = getCurrentNode(context);
+            struct STX_NodeAttribute *attr;
+            const struct LEX_LexerToken *token = getCurrent(context);
+
+            allocateAttributeForCurrent(context);
+            attr = getCurrentAttribute(context);
+            currentNode->attributeIndex = attr->id;
+            attr->comment = token->start;
+            attr->commentLength = token->length;
+        }
         advance(context);
     }
 }
@@ -223,11 +266,6 @@ static int expect(
     }
 }
 
-static struct STX_SyntaxTreeNode *getCurrentNode(struct SyntaxContext *context)
-{
-    return &context->tree->nodes[context->currentNodeIndex];
-}
-
 static void ascendToParent(struct SyntaxContext *context)
 {
     assert(getCurrentNode(context)->parentIndex != -1);
@@ -242,6 +280,15 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
     node->nodeType = type;
     appendChild(context->tree, getCurrentNode(context), node);
     context->currentNodeIndex = node->id;
+    if (context->latestComment)
+    {
+        struct STX_NodeAttribute *attr;
+        allocateAttributeForCurrent(context);
+        attr = getCurrentAttribute(context);
+        attr->comment = context->latestComment->start;
+        attr->commentLength = context->latestComment->length;
+        context->latestComment = 0;
+    }
 }
 
 static int isNumber(const struct LEX_LexerToken *token)
@@ -295,9 +342,12 @@ static int parseType(struct SyntaxContext *context);
 
 static void allocateAttributeForCurrent(struct SyntaxContext *context)
 {
-    int attrIndex = allocateAttribute(context->tree);
-    getCurrentNode(context)->attributeIndex = attrIndex;
-    context->currentAttributeIndex = attrIndex;
+    if (getCurrentNode(context)->attributeIndex == -1)
+    {
+        int attrIndex = allocateAttribute(context->tree);
+        getCurrentNode(context)->attributeIndex = attrIndex;
+        context->currentAttributeIndex = attrIndex;
+    }
 }
 
 static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *context)
@@ -1370,6 +1420,7 @@ struct STX_ParserResult STX_buildSyntaxTree(
     context.current = tokens;
     context.tree = tree;
     context.currentNodeIndex = tree->rootNodeIndex;
+    context.latestComment = 0;
 
     parseModule(&context);
 

@@ -101,6 +101,9 @@ struct STX_NodeAttribute
     };
     const char *name;
     int nameLength;
+    const char *comment;
+    int commentLength;
+
     struct STX_SyntaxTree *belongsTo;
 
 };

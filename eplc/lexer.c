@@ -527,6 +527,11 @@ static int doTokenization(struct LexerContext *context)
                     {
                         setCurrentTokenType(context, LEX_BLOCK_COMMENT);
                         acceptCurrent(context);
+                        if (getCurrent(context) == '*')
+                        {
+                            setCurrentTokenType(context, LEX_DOCUMENTATION_BLOCK_COMMENT);
+                            acceptCurrent(context);
+                        }
                         for (;;)
                         {
                             if (getCurrent(context) == '*')
@@ -548,6 +553,16 @@ static int doTokenization(struct LexerContext *context)
                     {
                         setCurrentTokenType(context, LEX_EOL_COMMENT);
                         acceptCurrent(context);
+                        if (getCurrent(context) == '/')
+                        {
+                            setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_COMMENT);
+                            acceptCurrent(context);
+                        }
+                        if (getCurrent(context) == '<')
+                        {
+                            setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_BACK_COMMENT);
+                            acceptCurrent(context);
+                        }
                         while ((getCurrent(context) != '\n') && (getCurrent(context) != '\r'))
                         {
                             acceptCurrent(context);
