@@ -35,6 +35,8 @@ enum STX_NodeType
     STX_FUNCPTR,
     STX_SWITCH,
     STX_CASE,
+    STX_CONTINUE,
+    STX_BREAK,
 };
 
 enum STX_ModuleAttribute

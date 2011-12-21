@@ -20,13 +20,13 @@
     </calendar>
   </calendars>
   <tasks>
-    <task id="1" name="EPL projekt" note="" work="604800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+    <task id="1" name="EPL projekt" note="" work="547200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
       <task id="2" name="Elkezd&#xE9;s" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="3" name="Param&#xE9;terek parsol&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="4" name="Hibaverem" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="5" name="Forr&#xE1;sk&#xF3;d beolvas&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
-      <task id="6" name="EPL ford&#xED;t&#xF3;" note="" work="403200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="6" name="EPL ford&#xED;t&#xF3;" note="" work="345600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="7" name="EPL lexik&#xE1;lis elemz&#x151;" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <task id="8" name="Azonos&#xED;t&#xF3;k felsimer&#xE9;se" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="9" name="Sz&#xE1;mok felismer&#xE9;se" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
@@ -40,8 +40,8 @@
           <task id="16" name="Karakterkonstansok felismer&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="17" name="E_LEX_ hibak&#xF3;dok" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         </task>
-        <task id="18" name="EPL szintaxis elemz&#x151;" note="" work="201600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
-          <task id="19" name="Nyelvtan defini&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="18" name="EPL szintaxis elemz&#x151;" note="" work="144000" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+          <task id="19" name="Nyelvtan defini&#xE1;l&#xE1;sa" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
             <task id="20" name="Deklar&#xE1;ci&#xF3;khoz" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
               <task id="21" name="V&#xE1;ltoz&#xF3;deklar&#xE1;ci&#xF3;" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
               <task id="22" name="F&#xFC;ggv&#xE9;nydeklar&#xE1;ci&#xF3;" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
@@ -53,7 +53,7 @@
               </task>
               <task id="28" name="N&#xE9;vterek" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
             </task>
-            <task id="29" name="Utas&#xED;t&#xE1;sokhoz" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+            <task id="29" name="Utas&#xED;t&#xE1;sokhoz" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
               <task id="30" name="return" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
               <task id="31" name="szelekci&#xF3;k" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
                 <task id="32" name="if" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
@@ -62,7 +62,7 @@
               <task id="34" name="iter&#xE1;ci&#xF3;k" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
                 <task id="35" name="loop-next" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
               </task>
-              <task id="36" name="break &#xE9;s continue utas&#xED;t&#xE1;s" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+              <task id="36" name="break &#xE9;s continue utas&#xED;t&#xE1;s" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
             </task>
             <task id="37" name="Eg&#xE9;sz modulhoz" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
             <task id="38" name="Oper&#xE1;torok" note="" work="57600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
@@ -77,7 +77,7 @@
           <task id="44" name="Fam&#x171;veletek implement&#xE1;l&#xE1;sa" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="45" name="Kifejez&#xE9;sek parsol&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="46" name="using deklar&#xE1;ci&#xF3;" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
-          <task id="47" name="Szab&#xE1;lyok &#xE1;t&#xED;r&#xE1;sa, hogy elfogadja a teljes neveket." note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="47" name="Szab&#xE1;lyok &#xE1;t&#xED;r&#xE1;sa, hogy elfogadja a teljes neveket." note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="48" name="parseDeclarations f&#xFC;ggv&#xE9;ny ellen&#x151;rz&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="49" name="Generikus dolgok" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
         </task>

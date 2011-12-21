@@ -142,6 +142,10 @@ static const struct LEX_LexerToken *getCurrent(struct SyntaxContext *context)
 
 static enum LEX_TokenType getCurrentTokenType(struct SyntaxContext *context)
 {
+    if (!context->current)
+    {
+        return LEX_SPEC_EOF;
+    }
     return context->current->tokenType;
 }
 
@@ -171,10 +175,11 @@ static void advance(struct SyntaxContext *context)
     assert(context->current);
     if (context->tokensRemaining)
     {
+        assert(context->tokensRemaining);
         context->tokensRemaining--;
         context->current++;
     }
-    else
+    if (!context->tokensRemaining)
     {
         context->current = 0;
     }
@@ -915,7 +920,9 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
  * <LoopNextStatement>
  * <VariableDeclaration> |
  * <SimpleStatement> |
- * <SwitchStatement>
+ * <SwitchStatement> |
+ * <BreakStatement> |
+ * <ContinueStatement>
  *
  */
 static int parseStatement(struct SyntaxContext *context)
@@ -936,6 +943,18 @@ static int parseStatement(struct SyntaxContext *context)
         break;
         case LEX_KW_SWITCH:
             if (!parseSwitchDeclaration(context)) return 0;
+        break;
+        case LEX_KW_CONTINUE:
+            acceptCurrent(context);
+            if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
+            descendNewNode(context, STX_CONTINUE);
+            ascendToParent(context);
+        break;
+        case LEX_KW_BREAK:
+            acceptCurrent(context);
+            if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
+            descendNewNode(context, STX_BREAK);
+            ascendToParent(context);
         break;
         default:
             if (!parseSimpleStatement(context)) return 0;
@@ -1231,7 +1250,7 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
     return 1;
 }
 
-static int parseDeclarations(struct SyntaxContext *context);
+static int parseDeclaration(struct SyntaxContext *context);
 
 /**
  * <NamespaceDeclaration> ::=
@@ -1257,7 +1276,10 @@ static int parseNamespaceDeclaration(struct SyntaxContext *context)
         return 0;
     }
     if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
-    if (!parseDeclarations(context)) return 0;
+    while (getCurrentTokenType(context) != LEX_RIGHT_BRACE)
+    {
+        if (!parseDeclaration(context)) return 0;
+    }
     if (!expect(context, LEX_RIGHT_BRACE, E_STX_RIGHT_BRACE_EXPECTED)) return 0;
 
     ascendToParent(context);
@@ -1428,54 +1450,40 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
  * <StructDeclaration> |
  * <FuncPtrDeclaration>)*
  */
-static int parseDeclarations(struct SyntaxContext *context)
+static int parseDeclaration(struct SyntaxContext *context)
 {
-    int declarationFound = 0;
-
-    descendNewNode(context, STX_DECLARATIONS);
-    do
+    switch (getCurrentTokenType(context))
     {
-        const struct LEX_LexerToken *current = getCurrent(context);
-        declarationFound = 0;
-        switch (current->tokenType)
-        {
-            case LEX_KW_VARDECL:
-                declarationFound = 1;
-                if (!parseVariableDeclaration(context)) return 0;
-            break;
-            case LEX_KW_FUNCTION:
-                declarationFound = 1;
-                if (!parseFunctionDeclaration(context)) return 0;
-            break;
-            case LEX_KW_NAMESPACE:
-                declarationFound = 1;
-                if (!parseNamespaceDeclaration(context)) return 0;
-            break;
-            case LEX_KW_USING:
-                declarationFound = 1;
-                if (!parseUsingDeclaration(context)) return 0;
-            break;
-            case  LEX_KW_STRUCT:
-                declarationFound = 1;
-                if (!parseStructDeclaration(context)) return 0;
-            break;
-            case LEX_KW_FUNCPTR:
-                declarationFound = 1;
-                if (!parseFuncPtrDeclaration(context)) return 0;
-            break;
-            default:
-            break;
-        }
+        case LEX_KW_VARDECL:
+            if (!parseVariableDeclaration(context)) return 0;
+        break;
+        case LEX_KW_FUNCTION:
+            if (!parseFunctionDeclaration(context)) return 0;
+        break;
+        case LEX_KW_NAMESPACE:
+            if (!parseNamespaceDeclaration(context)) return 0;
+        break;
+        case LEX_KW_USING:
+            if (!parseUsingDeclaration(context)) return 0;
+        break;
+        case  LEX_KW_STRUCT:
+            if (!parseStructDeclaration(context)) return 0;
+        break;
+        case LEX_KW_FUNCPTR:
+            if (!parseFuncPtrDeclaration(context)) return 0;
+        break;
+        default:
+            ERR_raiseError(E_STX_DECLARATION_EXPECTED);
+            return 0;
+        break;
     }
-    while (declarationFound);
-    ascendToParent(context);
     return 1;
 }
 
 /**
  * Module ::=
  * 'module' {'exe' | 'lib' | 'dll' } ';'
- * <Declarations>
+ * <Declaration>*
  * 'main'
  * <Block>
  */
@@ -1518,7 +1526,10 @@ static int parseModule(struct SyntaxContext *context)
         return 0;
     }
     if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
-    if (!parseDeclarations(context)) return 0;
+    while (getCurrentTokenType(context) != LEX_KW_MAIN)
+    {
+        if (!parseDeclaration(context)) return 0;
+    }
     if (!expect(context, LEX_KW_MAIN, E_STX_MAIN_EXPECTED)) return 0;
     if (!parseBlock(context)) return 0;
 
@@ -1554,6 +1565,11 @@ struct STX_ParserResult STX_buildSyntaxTree(
         {
             result.line = current->beginLine;
             result.column = current->beginColumn;
+        }
+        else
+        {
+            result.line = 0;
+            result.column = 0;
         }
     }
 

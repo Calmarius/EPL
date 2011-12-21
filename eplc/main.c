@@ -110,6 +110,8 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_CONTINUE)
         STRINGCASE(LEX_KW_SWITCH)
         STRINGCASE(LEX_KW_DEFAULT)
+
+        STRINGCASE(LEX_SPEC_EOF)
     }
     return "<UNKNOWN>";
 }
@@ -146,6 +148,8 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_FUNCPTR)
         STRINGCASE(STX_SWITCH)
         STRINGCASE(STX_CASE)
+        STRINGCASE(STX_CONTINUE)
+        STRINGCASE(STX_BREAK)
 
 
     }
@@ -525,6 +529,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_CASE_OR_DEFAULT_EXPECTED))
         {
             sprintf(buffer, "case or default expected. \n");
+        }
+        else if (ERR_catchError(E_STX_DECLARATION_EXPECTED))
+        {
+            sprintf(buffer, "declaration expected. \n");
+        }
+        else if (ERR_catchError(E_STX_UNEXPECTED_END_OF_FILE))
+        {
+            sprintf(buffer, "Unexpected end of file. \n");
         }
         else
         {

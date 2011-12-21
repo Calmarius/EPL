@@ -49,6 +49,7 @@ enum ERR_ErrorCode
     E_STX_BREAK_OR_CONTINUE_EXPECTED,
     E_STX_SWITCH_EXPECTED,
     E_STX_CASE_OR_DEFAULT_EXPECTED,
+    E_STX_DECLARATION_EXPECTED,
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);

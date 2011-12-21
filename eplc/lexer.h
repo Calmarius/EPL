@@ -74,6 +74,8 @@ enum LEX_TokenType
     LEX_KW_CONTINUE,
     LEX_KW_SWITCH,
     LEX_KW_DEFAULT,
+
+    LEX_SPEC_EOF,
 };
 
 

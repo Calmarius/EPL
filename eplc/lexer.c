@@ -686,6 +686,9 @@ struct LEX_LexerResult LEX_tokenizeString(const char *code)
 
     doTokenization(&lexerContext);
 
+    startNewToken(&lexerContext, LEX_SPEC_EOF);
+    finishCurrentToken(&lexerContext);
+
     lexerResult.tokenCount = lexerContext.tokenCount;
     lexerResult.linePos = getCurrentLine(&lexerContext);
     lexerResult.columnPos = lexerContext.currentColumn;
