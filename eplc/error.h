@@ -50,6 +50,7 @@ enum ERR_ErrorCode
     E_STX_SWITCH_EXPECTED,
     E_STX_CASE_OR_DEFAULT_EXPECTED,
     E_STX_DECLARATION_EXPECTED,
+    E_STX_PRECEDENCE_TYPE_EXPECTED,
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);

@@ -469,6 +469,7 @@ static int isInfixOperator(const struct LEX_LexerToken *token)
 {
     switch (token->tokenType)
     {
+        case LEX_PERIOD:
         case LEX_ADD_OPERATOR:
         case LEX_LESS_EQUAL_THAN:
         case LEX_LESS_THAN:
@@ -537,6 +538,8 @@ const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTree
             return 2;
         case LEX_MULTIPLY_OPERATOR:
             return 3;
+        case LEX_PERIOD:
+            return 4;
         default:
             assert(0);
         break;
@@ -1213,18 +1216,56 @@ static int parseParameterList(struct SyntaxContext *context)
     return 1;
 }
 
+static int isPrecedenceTokenType(enum LEX_TokenType type)
+{
+    switch (type)
+    {
+        case LEX_KW_ADDITIVE:
+        case LEX_KW_MULTIPLICATIVE:
+        case LEX_KW_RELATIONAL:
+            return 1;
+        default:
+            return 0;
+    }
+    return 0;
+}
+
 /**
  * <FunctionDeclaration> ::=
- * 'function' <Type> '(' <ParameterList> ')' <Block> ( 'cleanup' <Block>)?
+ * ('function' | 'operator' precedenceType) <Type> identifier '(' <ParameterList> ')' <Block> ( 'cleanup' <Block>)?
  */
 static int parseFunctionDeclaration(struct SyntaxContext *context)
 {
     struct STX_NodeAttribute *attribute;
     const struct LEX_LexerToken *token;
+    switch (getCurrentTokenType(context))
+    {
+        case LEX_KW_FUNCTION:
+            descendNewNode(context, STX_FUNCTION);
+            allocateAttributeForCurrent(context);
+            acceptCurrent(context);
+        break;
+        case LEX_KW_OPERATOR:
+            descendNewNode(context, STX_OPERATOR_FUNCTION);
+            allocateAttributeForCurrent(context);
+            acceptCurrent(context);
+            if (isPrecedenceTokenType(getCurrentTokenType(context)))
+            {
+                struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+                attr->operatorFunctionAttributes.precedence = getCurrentTokenType(context);
+                acceptCurrent(context);
+            }
+            else
+            {
+                ERR_raiseError(E_STX_PRECEDENCE_TYPE_EXPECTED);
+                return 0;
+            }
+        break;
+        default:
+            ERR_raiseError(E_STX_FUNCTION_EXPECTED);
+            return 0;
 
-    descendNewNode(context, STX_FUNCTION);
-    allocateAttributeForCurrent(context);
-    if (!expect(context, LEX_KW_FUNCTION, E_STX_FUNCTION_EXPECTED)) return 0;
+    }
     if (!parseType(context)) return 0;
     token = getCurrent(context);
     if (token->tokenType != LEX_IDENTIFIER)
@@ -1443,12 +1484,12 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
 
 /**
  * Declarations ::=
- * (<VariableDeclaration> |
+ * <VariableDeclaration> |
  * <FunctionDeclaration> |
  * <NamespaceDeclaration> |
  * <UsingDeclaration> |
  * <StructDeclaration> |
- * <FuncPtrDeclaration>)*
+ * <FuncPtrDeclaration>
  */
 static int parseDeclaration(struct SyntaxContext *context)
 {
@@ -1458,6 +1499,7 @@ static int parseDeclaration(struct SyntaxContext *context)
             if (!parseVariableDeclaration(context)) return 0;
         break;
         case LEX_KW_FUNCTION:
+        case LEX_KW_OPERATOR:
             if (!parseFunctionDeclaration(context)) return 0;
         break;
         case LEX_KW_NAMESPACE:

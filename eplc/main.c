@@ -110,6 +110,10 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_CONTINUE)
         STRINGCASE(LEX_KW_SWITCH)
         STRINGCASE(LEX_KW_DEFAULT)
+        STRINGCASE(LEX_KW_OPERATOR)
+        STRINGCASE(LEX_KW_MULTIPLICATIVE)
+        STRINGCASE(LEX_KW_ADDITIVE)
+        STRINGCASE(LEX_KW_RELATIONAL)
 
         STRINGCASE(LEX_SPEC_EOF)
     }
@@ -150,6 +154,7 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_CASE)
         STRINGCASE(STX_CONTINUE)
         STRINGCASE(STX_BREAK)
+        STRINGCASE(STX_OPERATOR_FUNCTION)
 
 
     }
@@ -267,9 +272,20 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             ptr += sprintf(
                 ptr,
                 "caseValue = %d ",
-                    attribute->caseAttributes.caseValue);
+                attribute->caseAttributes.caseValue
+            );
 
         }
+    }
+    else if (node->nodeType == STX_OPERATOR_FUNCTION)
+    {
+            ptr += sprintf(
+                ptr,
+                "precedenceLevel = %s ",
+                tokenTypeToString(
+                    attribute->operatorFunctionAttributes.precedence
+                )
+            );
     }
     if (attribute->name)
     {
@@ -537,6 +553,10 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_STX_UNEXPECTED_END_OF_FILE))
         {
             sprintf(buffer, "Unexpected end of file. \n");
+        }
+        else if (ERR_catchError(E_STX_PRECEDENCE_TYPE_EXPECTED))
+        {
+            sprintf(buffer, "Precedence type expected.");
         }
         else
         {

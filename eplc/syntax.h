@@ -37,6 +37,7 @@ enum STX_NodeType
     STX_CASE,
     STX_CONTINUE,
     STX_BREAK,
+    STX_OPERATOR_FUNCTION,
 };
 
 enum STX_ModuleAttribute
@@ -108,6 +109,10 @@ struct STX_NodeAttribute
             int caseValue;
             int isDefault;
         } caseAttributes;
+        struct
+        {
+            enum LEX_TokenType precedence;
+        } operatorFunctionAttributes;
     };
     const char *name;
     int nameLength;

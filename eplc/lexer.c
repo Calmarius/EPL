@@ -15,6 +15,7 @@ struct KeywordTokenTypePair
 // this array must be ordered by the keyword names!
 static struct KeywordTokenTypePair keywordMapping[] =
 {
+    {"additive", 8, LEX_KW_ADDITIVE},
     {"break", 5, LEX_KW_BREAK},
     {"buffer", 6, LEX_KW_BUFFER},
     {"case", 4, LEX_KW_CASE},
@@ -36,12 +37,15 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"loop", 4, LEX_KW_LOOP},
     {"main", 4, LEX_KW_MAIN},
     {"module", 6, LEX_KW_MODULE},
+    {"multiplicative", 14, LEX_KW_MULTIPLICATIVE},
     {"namespace", 9, LEX_KW_NAMESPACE},
     {"next", 4, LEX_KW_NEXT},
     {"of", 2, LEX_KW_OF},
+    {"operator", 8, LEX_KW_OPERATOR},
     {"out", 3, LEX_KW_OUT},
     {"pointer", 7, LEX_KW_POINTER},
     {"ref", 3, LEX_KW_REF},
+    {"relational", 10, LEX_KW_RELATIONAL},
     {"return", 6, LEX_KW_RETURN},
     {"struct", 6, LEX_KW_STRUCT},
     {"switch", 6, LEX_KW_SWITCH},
