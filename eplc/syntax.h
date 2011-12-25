@@ -111,8 +111,13 @@ struct STX_NodeAttribute
         } caseAttributes;
         struct
         {
-            enum LEX_TokenType precedence;
-        } operatorFunctionAttributes;
+            enum LEX_TokenType precedence; // used for operators
+            const char *externalLocation;
+            int externalLocationLength;
+            const char *externalFileType;
+            int externalFileTypeLength;
+            int isExternal;
+        } functionAttributes;
     };
     const char *name;
     int nameLength;

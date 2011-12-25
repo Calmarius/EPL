@@ -76,6 +76,8 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_DOCUMENTATION_EOL_COMMENT)
         STRINGCASE(LEX_DOCUMENTATION_EOL_BACK_COMMENT)
         STRINGCASE(LEX_COLON)
+        STRINGCASE(LEX_SHIFT_LEFT)
+        STRINGCASE(LEX_SHIFT_RIGHT)
 
         STRINGCASE(LEX_KW_EXE)
         STRINGCASE(LEX_KW_MAIN)
@@ -114,6 +116,10 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_MULTIPLICATIVE)
         STRINGCASE(LEX_KW_ADDITIVE)
         STRINGCASE(LEX_KW_RELATIONAL)
+        STRINGCASE(LEX_KW_NOT)
+        STRINGCASE(LEX_KW_NEG)
+        STRINGCASE(LEX_KW_DEREF)
+        STRINGCASE(LEX_KW_EXTERNAL)
 
         STRINGCASE(LEX_SPEC_EOF)
     }
@@ -221,71 +227,99 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
     {
         return "";
     }
-    if (node->nodeType == STX_TYPE_PREFIX)
+    switch (node->nodeType)
     {
-        ptr += sprintf(ptr, "type = %s ", typePrefixTypeToString(attribute->typePrefixAttributes.type));
-        if (attribute->typePrefixAttributes.type == STX_TP_BUFFER)
+        case STX_TYPE_PREFIX:
         {
-            ptr += sprintf(ptr, "elements = %d ", attribute->typePrefixAttributes.elements);
+            ptr += sprintf(ptr, "type = %s ", typePrefixTypeToString(attribute->typePrefixAttributes.type));
+            if (attribute->typePrefixAttributes.type == STX_TP_BUFFER)
+            {
+                ptr += sprintf(ptr, "elements = %d ", attribute->typePrefixAttributes.elements);
+            }
         }
-    }
-    else if (node->nodeType == STX_MODULE)
-    {
-        ptr += sprintf(
-            ptr,
-            "type = %s ",
-            moduleTypeToString(attribute->moduleAttributes.type));
-    }
-    else if (node->nodeType == STX_OPERATOR)
-    {
-        ptr += sprintf(
-            ptr,
-            "type = %s ",
-            tokenTypeToString(attribute->operatorAttributes.type));
-    }
-    else if (node->nodeType == STX_PARAMETER)
-    {
-        ptr += sprintf(
-            ptr,
-            "direction = %s ",
-            parameterDirectionTypeToString(
-                attribute->parameterAttributes.direction));
-    }
-    else if (node->nodeType == STX_TERM)
-    {
-        ptr += sprintf(
-            ptr,
-            "termType = %s tokenType = %s ",
-            termTypeToString(
-                attribute->termAttributes.termType),
-            tokenTypeToString(
-                attribute->termAttributes.tokenType));
-    }
-    else if (node->nodeType == STX_CASE)
-    {
-        if (attribute->caseAttributes.isDefault)
-        {
-            ptr += sprintf(ptr, "default ");
-        }
-        else
+        break;
+        case STX_MODULE:
         {
             ptr += sprintf(
                 ptr,
-                "caseValue = %d ",
-                attribute->caseAttributes.caseValue
-            );
-
+                "type = %s ",
+                moduleTypeToString(attribute->moduleAttributes.type));
         }
-    }
-    else if (node->nodeType == STX_OPERATOR_FUNCTION)
-    {
+        break;
+        case STX_OPERATOR:
+        {
             ptr += sprintf(
                 ptr,
-                "precedenceLevel = %s ",
+                "type = %s ",
+                tokenTypeToString(attribute->operatorAttributes.type));
+        }
+        break;
+        case STX_PARAMETER:
+        {
+            ptr += sprintf(
+                ptr,
+                "direction = %s ",
+                parameterDirectionTypeToString(
+                    attribute->parameterAttributes.direction));
+        }
+        break;
+        case STX_TERM:
+        {
+            ptr += sprintf(
+                ptr,
+                "termType = %s tokenType = %s ",
+                termTypeToString(
+                    attribute->termAttributes.termType),
                 tokenTypeToString(
-                    attribute->operatorFunctionAttributes.precedence
-                )
-            );
+                    attribute->termAttributes.tokenType));
+        }
+        break;
+        case STX_CASE:
+        {
+            if (attribute->caseAttributes.isDefault)
+            {
+                ptr += sprintf(ptr, "default ");
+            }
+            else
+            {
+                ptr += sprintf(
+                    ptr,
+                    "caseValue = %d ",
+                    attribute->caseAttributes.caseValue
+                );
+
+            }
+        }
+        break;
+        case STX_OPERATOR_FUNCTION:
+        case STX_FUNCTION:
+        {
+            if (node->nodeType == STX_OPERATOR_FUNCTION)
+            {
+                ptr += sprintf(
+                    ptr,
+                    "precedenceLevel = %s ",
+                    tokenTypeToString(
+                        attribute->functionAttributes.precedence
+                    )
+                );
+            }
+            if (attribute->functionAttributes.isExternal)
+            {
+                ptr += sprintf(
+                    ptr,
+                    "location = %.*s type = %.*s ",
+                    attribute->functionAttributes.externalLocationLength,
+                    attribute->functionAttributes.externalLocation,
+                    attribute->functionAttributes.externalFileTypeLength,
+                    attribute->functionAttributes.externalFileType
+                );
+
+            }
+        }
+        break;
+        default:
+        break;
     }
     if (attribute->name)
     {

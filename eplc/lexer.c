@@ -23,9 +23,11 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"cleanup", 7, LEX_KW_CLEANUP},
     {"continue", 8, LEX_KW_CONTINUE},
     {"default", 7, LEX_KW_DEFAULT},
+    {"deref", 5, LEX_KW_DEREF},
     {"dll", 3, LEX_KW_DLL},
     {"else", 4, LEX_KW_ELSE},
     {"exe", 3, LEX_KW_EXE},
+    {"external", 8, LEX_KW_EXTERNAL},
     {"funcptr", 7, LEX_KW_FUNCPTR},
     {"function", 8, LEX_KW_FUNCTION},
     {"handle", 6, LEX_KW_HANDLE},
@@ -39,7 +41,9 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"module", 6, LEX_KW_MODULE},
     {"multiplicative", 14, LEX_KW_MULTIPLICATIVE},
     {"namespace", 9, LEX_KW_NAMESPACE},
+    {"neg", 3, LEX_KW_NEG},
     {"next", 4, LEX_KW_NEXT},
+    {"not", 3, LEX_KW_NOT},
     {"of", 2, LEX_KW_OF},
     {"operator", 8, LEX_KW_OPERATOR},
     {"out", 3, LEX_KW_OUT},
@@ -193,7 +197,7 @@ static void ignoreCurrent(struct LexerContext *context)
     advance(context);
 }
 
-static char getCurrent(struct LexerContext *context)
+static char getCurrentCharacter(struct LexerContext *context)
 {
     return *context->current;
 }
@@ -214,13 +218,13 @@ static int compareBinaryString(
     return d;
 }
 
-static int parseIdentifier(struct LexerContext *context)
+static int scanIdentifier(struct LexerContext *context)
 {
-    if (isLetter(getCurrent(context)))
+    if (isLetter(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
-    while (isAlphaNumeric(getCurrent(context)))
+    while (isAlphaNumeric(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
@@ -261,9 +265,9 @@ static int parseIdentifier(struct LexerContext *context)
     return 1;
 }
 
-static int parseBuiltInType(struct LexerContext *context)
+static int scanBuiltInType(struct LexerContext *context)
 {
-    if (getCurrent(context) == '$')
+    if (getCurrentCharacter(context) == '$')
     {
         acceptCurrent(context);
     }
@@ -272,7 +276,7 @@ static int parseBuiltInType(struct LexerContext *context)
         ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
         return 0;
     }
-    switch (getCurrent(context))
+    switch (getCurrentCharacter(context))
     {
         case 'u':
         case 'i':
@@ -283,17 +287,17 @@ static int parseBuiltInType(struct LexerContext *context)
             ERR_raiseError(E_LEX_INVALID_BUILT_IN_TYPE_LETTER);
             return 0;
     }
-    while (isDecimal(getCurrent(context)))
+    while (isDecimal(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
     return 1;
 }
 
-static int parseExponentialPart(struct LexerContext *context)
+static int scanExponentialPart(struct LexerContext *context)
 {
     int c;
-    switch(getCurrent(context))
+    switch(getCurrentCharacter(context))
     {
         case '-':
         case '+':
@@ -301,7 +305,7 @@ static int parseExponentialPart(struct LexerContext *context)
         break;
     }
     c = 0;
-    while (isDecimal(getCurrent(context)))
+    while (isDecimal(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
         c++;
@@ -314,53 +318,53 @@ static int parseExponentialPart(struct LexerContext *context)
     return 1;
 }
 
-static int parseFractionalPart(struct LexerContext *context)
+static int scanFractionalPart(struct LexerContext *context)
 {
     char c;
-    while (isDecimal(getCurrent(context)))
+    while (isDecimal(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
-    c = getCurrent(context);
+    c = getCurrentCharacter(context);
     if ((c | 0x20) == 'e')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return parseExponentialPart(context);
+        return scanExponentialPart(context);
     }
     return 1;
 }
 
-static int parseDecimalNumber(struct LexerContext *context)
+static int scanDecimalNumber(struct LexerContext *context)
 {
     char c;
-    while (isDecimal(getCurrent(context)))
+    while (isDecimal(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
-    c = getCurrent(context);
+    c = getCurrentCharacter(context);
     if (c == '.')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return parseFractionalPart(context);
+        return scanFractionalPart(context);
     }
     else if ((c | 0x20) == 'e')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return parseExponentialPart(context);
+        return scanExponentialPart(context);
     }
     return 1;
 }
 
-static int parseHexadecimalPart(struct LexerContext *context)
+static int scanHexadecimalPart(struct LexerContext *context)
 {
-    while(isHexa(getCurrent(context)))
+    while(isHexa(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
-    if (getCurrent(context) == '.')
+    if (getCurrentCharacter(context) == '.')
     {
         ERR_raiseError(E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED);
         return 0;
@@ -368,10 +372,10 @@ static int parseHexadecimalPart(struct LexerContext *context)
     return 1;
 }
 
-static int parseOctalNumber(struct LexerContext *context)
+static int scanOctalNumber(struct LexerContext *context)
 {
     char c;
-    if (getCurrent(context) == '0')
+    if (getCurrentCharacter(context) == '0')
     {
         acceptCurrent(context);
     }
@@ -380,48 +384,48 @@ static int parseOctalNumber(struct LexerContext *context)
         ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
         return 0;
     }
-    if ((getCurrent(context) | 0x20) == 'x')
+    if ((getCurrentCharacter(context) | 0x20) == 'x')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_HEXA_NUMBER);
-        return parseHexadecimalPart(context);
+        return scanHexadecimalPart(context);
     }
-    while (isOctal(getCurrent(context)))
+    while (isOctal(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
-    c = getCurrent(context);
+    c = getCurrentCharacter(context);
     if (isDecimal(c))
     {
         setCurrentTokenType(context, LEX_DECIMAL_NUMBER);
-        return parseDecimalNumber(context);
+        return scanDecimalNumber(context);
     }
     else if (c == '.')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return parseFractionalPart(context);
+        return scanFractionalPart(context);
     }
     else if ((c | 0x20) == 'e')
     {
         acceptCurrent(context);
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return parseExponentialPart(context);
+        return scanExponentialPart(context);
     }
     return 1;
 }
 
-static int parseNumber(struct LexerContext *context)
+static int scanNumber(struct LexerContext *context)
 {
-    char c = getCurrent(context);
+    char c = getCurrentCharacter(context);
     if (c == '0')
     {
         setCurrentTokenType(context, LEX_OCTAL_NUMBER);
-        if (!parseOctalNumber(context)) return 0;
+        if (!scanOctalNumber(context)) return 0;
     }
     else if (('1' <= c) && (c <= '9'))
     {
-        if (!parseDecimalNumber(context)) return 0;
+        if (!scanDecimalNumber(context)) return 0;
     }
     else
     {
@@ -431,16 +435,16 @@ static int parseNumber(struct LexerContext *context)
     return 1;
 }
 
-static int parseString(struct LexerContext *context)
+static int scanString(struct LexerContext *context)
 {
-    char c = getCurrent(context);
+    char c = getCurrentCharacter(context);
     if (c != '"')
     {
         ERR_raiseError(E_LEX_QUOTE_EXPECTED);
         return 0;
     }
     acceptCurrent(context);
-    while(getCurrent(context) != '"')
+    while(getCurrentCharacter(context) != '"')
     {
         acceptCurrent(context);
     }
@@ -450,9 +454,9 @@ static int parseString(struct LexerContext *context)
 
 static int doTokenization(struct LexerContext *context)
 {
-    while (getCurrent(context))
+    while (getCurrentCharacter(context))
     {
-        char c = getCurrent(context);
+        char c = getCurrentCharacter(context);
 
         if (isWhitespace(c))
         {
@@ -461,13 +465,13 @@ static int doTokenization(struct LexerContext *context)
         else if (isLetter(c))
         {
             startNewToken(context, LEX_IDENTIFIER);
-            if (!parseIdentifier(context)) return 0;
+            if (!scanIdentifier(context)) return 0;
             finishCurrentToken(context);
         }
         else if (isDecimal(c))
         {
             startNewToken(context, LEX_DECIMAL_NUMBER);
-            if (!parseNumber(context)) return 0;
+            if (!scanNumber(context)) return 0;
             finishCurrentToken(context);
         }
         else
@@ -491,12 +495,12 @@ static int doTokenization(struct LexerContext *context)
                 break;
                 case '$':
                     startNewToken(context, LEX_BUILT_IN_TYPE);
-                    if (!parseBuiltInType(context)) return 0;
+                    if (!scanBuiltInType(context)) return 0;
                     finishCurrentToken(context);
                 break;
                 case '"':
                     startNewToken(context, LEX_STRING);
-                    if (!parseString(context)) return 0;
+                    if (!scanString(context)) return 0;
                     finishCurrentToken(context);
                 break;
                 case '+':
@@ -532,21 +536,21 @@ static int doTokenization(struct LexerContext *context)
                 case '/':
                     startNewToken(context, LEX_DIVISION_OPERATOR);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '*')
+                    if (getCurrentCharacter(context) == '*')
                     {
                         setCurrentTokenType(context, LEX_BLOCK_COMMENT);
                         acceptCurrent(context);
-                        if (getCurrent(context) == '*')
+                        if (getCurrentCharacter(context) == '*')
                         {
                             setCurrentTokenType(context, LEX_DOCUMENTATION_BLOCK_COMMENT);
                             acceptCurrent(context);
                         }
                         for (;;)
                         {
-                            if (getCurrent(context) == '*')
+                            if (getCurrentCharacter(context) == '*')
                             {
                                 acceptCurrent(context);
-                                if (getCurrent(context) == '/')
+                                if (getCurrentCharacter(context) == '/')
                                 {
                                     acceptCurrent(context);
                                     break;
@@ -558,21 +562,21 @@ static int doTokenization(struct LexerContext *context)
                             }
                         }
                     }
-                    else if (getCurrent(context) == '/')
+                    else if (getCurrentCharacter(context) == '/')
                     {
                         setCurrentTokenType(context, LEX_EOL_COMMENT);
                         acceptCurrent(context);
-                        if (getCurrent(context) == '/')
+                        if (getCurrentCharacter(context) == '/')
                         {
                             setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_COMMENT);
                             acceptCurrent(context);
                         }
-                        if (getCurrent(context) == '<')
+                        if (getCurrentCharacter(context) == '<')
                         {
                             setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_BACK_COMMENT);
                             acceptCurrent(context);
                         }
-                        while ((getCurrent(context) != '\n') && (getCurrent(context) != '\r'))
+                        while ((getCurrentCharacter(context) != '\n') && (getCurrentCharacter(context) != '\r'))
                         {
                             acceptCurrent(context);
                         }
@@ -597,27 +601,47 @@ static int doTokenization(struct LexerContext *context)
                 case  '>':
                     startNewToken(context, LEX_GREATER_THAN);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '=')
+                    switch (getCurrentCharacter(context))
                     {
-                        setCurrentTokenType(context, LEX_GREATER_EQUAL_THAN);
-                        acceptCurrent(context);
+                        case '=':
+                        {
+                            setCurrentTokenType(context, LEX_GREATER_EQUAL_THAN);
+                            acceptCurrent(context);
+                        }
+                        break;
+                        case '>':
+                        {
+                            setCurrentTokenType(context, LEX_SHIFT_RIGHT);
+                            acceptCurrent(context);
+                        }
+                        break;
                     }
                     finishCurrentToken(context);
                 break;
                 case  '<':
                     startNewToken(context, LEX_LESS_THAN);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '=')
+                    switch (getCurrentCharacter(context))
                     {
-                        setCurrentTokenType(context, LEX_LESS_EQUAL_THAN);
-                        acceptCurrent(context);
+                        case '=':
+                        {
+                            setCurrentTokenType(context, LEX_LESS_EQUAL_THAN);
+                            acceptCurrent(context);
+                        }
+                        break;
+                        case '<':
+                        {
+                            setCurrentTokenType(context, LEX_SHIFT_LEFT);
+                            acceptCurrent(context);
+                        }
+                        break;
                     }
                     finishCurrentToken(context);
                 break;
                 case '=':
                     startNewToken(context, LEX_EQUAL);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '=')
+                    if (getCurrentCharacter(context) == '=')
                     {
                         acceptCurrent(context);
                     }
@@ -631,7 +655,7 @@ static int doTokenization(struct LexerContext *context)
                 case '!':
                     startNewToken(context, LEX_NOT_EQUAL);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '=')
+                    if (getCurrentCharacter(context) == '=')
                     {
                         acceptCurrent(context);
                     }
@@ -645,12 +669,12 @@ static int doTokenization(struct LexerContext *context)
                 case ':':
                     startNewToken(context, LEX_COLON);
                     acceptCurrent(context);
-                    if (getCurrent(context) == '=')
+                    if (getCurrentCharacter(context) == '=')
                     {
                         setCurrentTokenType(context, LEX_ASSIGN_OPERATOR);
                         acceptCurrent(context);
                     }
-                    else if (getCurrent(context) == ':')
+                    else if (getCurrentCharacter(context) == ':')
                     {
                         setCurrentTokenType(context, LEX_SCOPE_SEPARATOR);
                         acceptCurrent(context);
