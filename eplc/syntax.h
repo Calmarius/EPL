@@ -38,6 +38,8 @@ enum STX_NodeType
     STX_CONTINUE,
     STX_BREAK,
     STX_OPERATOR_FUNCTION,
+    STX_PLATFORM,
+    STX_FORPLATFORM,
 };
 
 enum STX_ModuleAttribute

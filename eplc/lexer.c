@@ -47,6 +47,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"of", 2, LEX_KW_OF},
     {"operator", 8, LEX_KW_OPERATOR},
     {"out", 3, LEX_KW_OUT},
+    {"platfrom", 8, LEX_KW_PLATFORM},
     {"pointer", 7, LEX_KW_POINTER},
     {"ref", 3, LEX_KW_REF},
     {"relational", 10, LEX_KW_RELATIONAL},
@@ -652,6 +653,15 @@ static int doTokenization(struct LexerContext *context)
                     }
                     finishCurrentToken(context);
                 break;
+                case '#':
+                    startNewToken(context, LEX_CHARACTER);
+                    acceptCurrent(context);
+                    while (isDecimal(getCurrentCharacter(context)))
+                    {
+                        acceptCurrent(context);
+                    }
+                    finishCurrentToken(context);
+                break;
                 case '!':
                     startNewToken(context, LEX_NOT_EQUAL);
                     acceptCurrent(context);
@@ -695,6 +705,58 @@ void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult)
     free(lexerResult->tokens);
 }
 
+static void mergeAdjacentStrings(struct LexerContext *context)
+{
+    int i, j = 0;
+    int inSeriesOfStrings = 0;
+    struct LEX_LexerToken *stringToken;
+    struct LEX_LexerResult *result = context->result;
+    for (i = 0; i < context->tokenCount; i++)
+    {
+        struct LEX_LexerToken *token = &result->tokens[i];
+        struct LEX_LexerToken *previousToken;
+        switch (token->tokenType)
+        {
+            case LEX_STRING:
+            case LEX_CHARACTER:
+            {
+                if (!inSeriesOfStrings)
+                {
+                    inSeriesOfStrings = 1;
+                    stringToken = token;
+                }
+                else
+                {
+                    token->tokenType = LEX_SPEC_DELETED;
+                }
+            }
+            break;
+            default:
+                if (inSeriesOfStrings)
+                {
+                    inSeriesOfStrings = 0;
+                    stringToken->endColumn = previousToken->endColumn;
+                    stringToken->endLine = previousToken->endLine;
+                    stringToken->length =
+                        (size_t)(previousToken->start + previousToken->length) -
+                        (size_t)(stringToken->start);
+                }
+        }
+        previousToken = token;
+    }
+    i = 0;
+    j = 0;
+    for (i = 0; i < context->tokenCount; i++)
+    {
+        struct LEX_LexerToken *token = &result->tokens[i];
+        if (token->tokenType != LEX_SPEC_DELETED)
+        {
+            result->tokens[j++] = *token;
+        }
+    }
+    context->tokenCount = j;
+}
+
 struct LEX_LexerResult LEX_tokenizeString(const char *code)
 {
     struct LEX_LexerResult lexerResult;
@@ -713,6 +775,8 @@ struct LEX_LexerResult LEX_tokenizeString(const char *code)
     lexerContext.currentToken = 0;
 
     doTokenization(&lexerContext);
+
+    mergeAdjacentStrings(&lexerContext);
 
     startNewToken(&lexerContext, LEX_SPEC_EOF);
     finishCurrentToken(&lexerContext);

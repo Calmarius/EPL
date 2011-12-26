@@ -53,6 +53,7 @@ enum ERR_ErrorCode
     E_STX_PRECEDENCE_TYPE_EXPECTED,
     E_STX_STRING_EXPECTED,
     E_STX_BLOCK_OR_EXTERNAL_EXPECTED,
+    E_STX_PLATFORM_EXPECTED
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);

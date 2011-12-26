@@ -42,6 +42,7 @@ enum LEX_TokenType
     LEX_COLON,
     LEX_SHIFT_RIGHT,
     LEX_SHIFT_LEFT,
+    LEX_CHARACTER,
 
     LEX_KW_ELSE,
     LEX_KW_EXE,
@@ -84,9 +85,10 @@ enum LEX_TokenType
     LEX_KW_NEG,
     LEX_KW_DEREF,
     LEX_KW_EXTERNAL,
-
+    LEX_KW_PLATFORM,
 
     LEX_SPEC_EOF,
+    LEX_SPEC_DELETED,
 };
 
 

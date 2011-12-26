@@ -1236,7 +1236,7 @@ static int isPrecedenceTokenType(enum LEX_TokenType type)
 /**
  * <FunctionDeclaration> ::=
  * ('function' | 'operator' precedenceType) <Type> identifier '(' <ParameterList> ')'
- * ((<Block> ( 'cleanup' <Block>)?) | ('external' string string ';'))
+ * ((<Block> ( 'cleanup' <Block>)?) | ('external' string ':' string ';'))
  */
 static int parseFunctionDeclaration(struct SyntaxContext *context)
 {
@@ -1308,6 +1308,7 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
                 attribute->functionAttributes.externalLocationLength = token->length;
             }
             if (!expect(context, LEX_STRING, E_STX_STRING_EXPECTED)) return 0;
+            if (!expect(context, LEX_COLON, E_STX_COLON_EXPECTED)) return 0;
             if (getCurrentTokenType(context) == LEX_STRING)
             {
                 const struct LEX_LexerToken *token = getCurrentToken(context);
@@ -1521,13 +1522,79 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * Declarations ::=
+ * PlatfromDeclaration :=
+ * 'platform' string (, string)* '{' <Declaration>* '}'
+ */
+static int parsePlatformDeclaration(struct SyntaxContext *context)
+{
+    descendNewNode(context, STX_PLATFORM);
+    {
+        if (!expect(context, LEX_KW_PLATFORM, E_STX_PLATFORM_EXPECTED)) return 0;
+        descendNewNode(context, STX_FORPLATFORM);
+        {
+            allocateAttributeForCurrent(context);
+            if (getCurrentTokenType(context) == LEX_STRING)
+            {
+                const struct LEX_LexerToken *token = getCurrentToken(context);
+                struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+                attr->name = token->start;
+                attr->nameLength = token->length;
+                acceptCurrent(context);
+            }
+            else
+            {
+                ERR_raiseError(E_STX_STRING_EXPECTED);
+                return  0;
+            }
+        }
+        ascendToParent(context);
+        while (getCurrentTokenType(context) == LEX_COMMA)
+        {
+            acceptCurrent(context);
+            descendNewNode(context, STX_FORPLATFORM);
+            {
+                allocateAttributeForCurrent(context);
+                if (getCurrentTokenType(context) == LEX_STRING)
+                {
+                    const struct LEX_LexerToken *token = getCurrentToken(context);
+                    struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+                    attr->name = token->start;
+                    attr->nameLength = token->length;
+                    acceptCurrent(context);
+                }
+                else
+                {
+                    ERR_raiseError(E_STX_STRING_EXPECTED);
+                    return  0;
+                }
+            }
+            ascendToParent(context);
+        }
+        descendNewNode(context, STX_DECLARATIONS);
+        {
+            if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
+            while (getCurrentTokenType(context) != LEX_RIGHT_BRACE)
+            {
+                if (!parseDeclaration(context)) return 0;
+            }
+            if (!expect(context, LEX_RIGHT_BRACE, E_STX_RIGHT_BRACE_EXPECTED)) return 0;
+        }
+        ascendToParent(context);
+
+    }
+    ascendToParent(context);
+    return 1;
+}
+
+/**
+ * Declaration ::=
  * <VariableDeclaration> |
  * <FunctionDeclaration> |
  * <NamespaceDeclaration> |
  * <UsingDeclaration> |
  * <StructDeclaration> |
- * <FuncPtrDeclaration>
+ * <FuncPtrDeclaration> |
+ * <PlatfromDeclaration>
  */
 static int parseDeclaration(struct SyntaxContext *context)
 {
@@ -1551,6 +1618,9 @@ static int parseDeclaration(struct SyntaxContext *context)
         break;
         case LEX_KW_FUNCPTR:
             if (!parseFuncPtrDeclaration(context)) return 0;
+        break;
+        case LEX_KW_PLATFORM:
+            if (!parsePlatformDeclaration(context)) return 0;
         break;
         default:
             ERR_raiseError(E_STX_DECLARATION_EXPECTED);
