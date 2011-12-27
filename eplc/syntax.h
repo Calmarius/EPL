@@ -126,6 +126,8 @@ struct STX_NodeAttribute
     const char *comment;
     int commentLength;
 
+    int refereceId;
+
     struct STX_SyntaxTree *belongsTo;
 
 };

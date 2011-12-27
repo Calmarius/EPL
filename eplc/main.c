@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "error.h"
 #include "syntax.h"
+#include "assocarray.h"
 
 typedef void (*NotificationCallback)(const char *msg);
 
