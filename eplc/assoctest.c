@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <assert.h>
 
 #include "assocarray.h"
 
@@ -19,78 +22,81 @@ int callback(struct ASSOC_KeyValuePair *kvp, int level, int index, void *userDat
     return 1;
 }
 
+#define STATIC_SIZE(array) sizeof(array) / sizeof(array[0])
+
 int main()
 {
     struct ASSOC_Array array;
+    const char *strs[] =
+    {
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+    };
+
+    srand(time(0));
+
+    setbuf(stdout, 0);
+
     ASSOC_initializeArray(&array);
-    ASSOC_insert(&array, "zizzz", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "zizzz", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "xyz", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "yay", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "bar", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "car", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "baz", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "foo", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "a", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "b", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "c", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "d", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "e", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "f", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "g", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "h", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "i", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "j", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "k", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "l", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "m", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "n", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "o", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "p", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "q", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "r", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "s", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "t", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "u", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "v", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "w", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "x", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "y", 0);
-    ASSOC_dump(&array); printf("\n");
-    ASSOC_insert(&array, "z", 0);
-    ASSOC_dump(&array); printf("\n");
+    int i;
+    for (i = 0; i < 100000; i++)
+    {
+        int a = rand() % STATIC_SIZE(strs);
+        int b = rand() % STATIC_SIZE(strs);
+        const char *s = strs[a];
+        strs[a] = strs[b];
+        strs[b] = s;
+    }
+    for (i = 0; i < STATIC_SIZE(strs); i++)
+    {
+        printf("Adding %s\n", strs[i]);
+        assert(ASSOC_insert(&array, strs[i], 0));
+        ASSOC_dump(&array); printf("\n");
+    }
+    for (i = 0; i < 100000; i++)
+    {
+        int a = rand() % STATIC_SIZE(strs);
+        int b = rand() % STATIC_SIZE(strs);
+        const char *s = strs[a];
+        strs[a] = strs[b];
+        strs[b] = s;
+    }
+    printf("Adding stuff again!\n");
+    for (i = 0; i < STATIC_SIZE(strs); i++)
+    {
+        printf("Adding %s\n", strs[i]);
+        assert(!ASSOC_insert(&array, strs[i], 0));
+        ASSOC_dump(&array); printf("\n");
+    }
+    for (i = 0; i < 100000; i++)
+    {
+        int a = rand() % STATIC_SIZE(strs);
+        int b = rand() % STATIC_SIZE(strs);
+        const char *s = strs[a];
+        strs[a] = strs[b];
+        strs[b] = s;
+    }
+    for (i = 0; i < STATIC_SIZE(strs); i++)
+    {
+        printf("Removing %s\n", strs[i]);
+        assert(ASSOC_remove(&array, strs[i]));
+        ASSOC_dump(&array); printf("\n");
+    }
+    for (i = 0; i < 100000; i++)
+    {
+        int a = rand() % STATIC_SIZE(strs);
+        int b = rand() % STATIC_SIZE(strs);
+        const char *s = strs[a];
+        strs[a] = strs[b];
+        strs[b] = s;
+    }
+    printf("Removing stuff again!\n");
+    for (i = 0; i < STATIC_SIZE(strs); i++)
+    {
+        printf("Removing %s\n", strs[i]);
+        assert(!ASSOC_remove(&array, strs[i]));
+        ASSOC_dump(&array); printf("\n");
+    }
     ASSOC_cleanupArray(&array);
 
     fgetc(stdin);
