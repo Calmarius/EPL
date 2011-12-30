@@ -25,24 +25,30 @@ struct SyntaxContext
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree);
 static void initializeNode(struct STX_SyntaxTreeNode *node);
 
-static void preorderStep(struct STX_SyntaxTree *tree, int level, struct STX_SyntaxTreeNode *node, STX_TransverseCallback callback, void *userData)
+static int preorderStep(
+    struct STX_SyntaxTree *tree,
+    int level,
+    struct STX_SyntaxTreeNode *node,
+    STX_TransverseCallback callback,
+    void *userData)
 {
     int index;
-    callback(node, level, userData);
+    if (!callback(node, level, userData)) return 0;
     index = node->firstChildIndex;
     while (index >= 0)
     {
         struct STX_SyntaxTreeNode *current = &tree->nodes[index];
-        preorderStep(tree, level+1, current, callback, userData);
+        if (!preorderStep(tree, level+1, current, callback, userData)) return 0;
         index = current->nextSiblingIndex;
     }
+    return 1;
 }
 
-void STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData)
+int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData)
 {
     struct STX_SyntaxTreeNode *node;
     node = &tree->nodes[tree->rootNodeIndex];
-    preorderStep(tree, 0, node, callback, userData);
+    return preorderStep(tree, 0, node, callback, userData);
 }
 
 
@@ -1204,7 +1210,7 @@ static int parseParameter(struct SyntaxContext *context)
  */
 static int parseParameterList(struct SyntaxContext *context)
 {
-    descendNewNode(context, STX_ARGUMENT_LIST);
+    descendNewNode(context, STX_PARAMETER_LIST);
     if (getCurrentTokenType(context) != LEX_RIGHT_PARENTHESIS)
     {
         if (!parseParameter(context)) return 0;
@@ -1724,5 +1730,10 @@ struct STX_ParserResult STX_buildSyntaxTree(
     }
 
     return result;
+}
+
+struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree)
+{
+    return &tree->nodes[tree->rootNodeIndex];
 }
 

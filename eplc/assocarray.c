@@ -150,6 +150,20 @@ static void checkBlockForSplit(
 
 
 }
+
+int compareKey(
+    const struct ASSOC_KeyValuePair *a,
+    const struct ASSOC_KeyValuePair *b)
+{
+    int min = a->keyLength < b->keyLength ? a->keyLength : b->keyLength;
+    int result = memcmp(a->key, b->key, min);
+    if (!result)
+    {
+        return a->keyLength - b->keyLength;
+    }
+    return result;
+}
+
 /**
  * Adds a key-value pair to the block.
  *
@@ -177,7 +191,7 @@ static int addToBlock(
     // find the position where to insert.
     for (insertPos = 0; insertPos < block->elementCount; insertPos++)
     {
-        int result = strcmp(kvp->key, block->keys[insertPos].key);
+        int result = compareKey(kvp, &block->keys[insertPos]);
         if (result < 0)
         {
             break;
@@ -262,6 +276,54 @@ static int transverseBlock(
 }
 
 /**
+ * Transverses a block in inorder way.
+ *
+ * @param [in,out] block Subject
+ * @param [in] level Reserved, set to 0.
+ * @param [in] callback The callback function will be called for each element.
+ *      Arguments are:
+ *          the current key-value pair,
+ *          level of recursion,
+ *          index of the element in block,
+ *          user provided data.
+ *      If it returns 0, the transversal is terminated.
+ * @param [in] userData User provided data, it's passed to the callback.
+ *
+ * @return Returns zero, if the callback terinated the transversal, non-zero otherwise.
+ */
+static int inorderTransverseBlock(
+    struct AssocBlock *block,
+    int level,
+    int (*callback)(struct ASSOC_KeyValuePair*, int, int, void*),
+    void *userData
+)
+{
+    int i;
+    // transverse the elements first.
+    for (i = 0; i < block->elementCount; i++)
+    {
+        if (block->pointers[i])
+        {
+            if (!inorderTransverseBlock(block->pointers[i], level + 1, callback, userData))
+            {
+                return 0;
+            }
+        }
+        if (!callback(&block->keys[i], level, i, userData)) return 0;
+    }
+    if (block->pointers[i])
+    {
+        if (!inorderTransverseBlock(block->pointers[i], level + 1, callback, userData))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+
+}
+
+/**
  * Dumps the contents of a block recursively. Used for diagnostics.
  *
  * @param [in] block Subject.
@@ -276,7 +338,7 @@ void dumpNode(const struct AssocBlock *block, int level)
     for (i = 0; i < block->elementCount; i++)
     {
         if (i) printf(", ");
-        printf("%s", block->keys[i].key);
+        printf("%.*s", block->keys[i].keyLength, block->keys[i].key);
     }
     printf("]          this: %p, parent: %p\n", block, block->parent);
     // Dump child nodes.
@@ -492,16 +554,17 @@ void ASSOC_cleanupArray(struct ASSOC_Array *array)
 }
 
 
-int ASSOC_insert(struct ASSOC_Array *array, const char *key, void *value)
+int ASSOC_insert(struct ASSOC_Array *array, const char *key, int keyLength, void *value)
 {
     struct ASSOC_KeyValuePair kvp;
     kvp.key = key;
+    kvp.keyLength = keyLength;
     kvp.value = value;
     return addToBlock(array, array->root, &kvp, 0, 1);
 }
 
 
-int ASSOC_remove(struct ASSOC_Array *array, const char *key)
+int ASSOC_remove(struct ASSOC_Array *array, const char *key, int keyLength)
 {
     return removeFromBlock(array, array->root, key, 0);
 }
@@ -519,6 +582,15 @@ int ASSOC_preorderTransversal(
 void ASSOC_dump(struct ASSOC_Array *array)
 {
     dumpNode(array->root, 0);
+}
+
+int ASSOC_transverseInorder(
+    struct ASSOC_Array *array,
+    int (*callback)(struct ASSOC_KeyValuePair*, int, int, void*),
+    void *userData
+)
+{
+    return inorderTransverseBlock(array->root, 0, callback, userData);
 }
 
 

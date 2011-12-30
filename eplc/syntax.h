@@ -40,6 +40,7 @@ enum STX_NodeType
     STX_OPERATOR_FUNCTION,
     STX_PLATFORM,
     STX_FORPLATFORM,
+    STX_PARAMETER_LIST,
 };
 
 enum STX_ModuleAttribute
@@ -179,11 +180,11 @@ struct STX_ParserResult STX_buildSyntaxTree(
     int tokenCount
 );
 
-typedef void (*STX_TransverseCallback)(struct STX_SyntaxTreeNode *node, int level, void *userData);
+typedef int (*STX_TransverseCallback)(struct STX_SyntaxTreeNode *node, int level, void *userData);
 
 void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 
-void STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
+int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
 const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
 

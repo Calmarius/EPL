@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include <string.h>
 
 #include "assocarray.h"
 
@@ -50,7 +51,7 @@ int main()
     for (i = 0; i < STATIC_SIZE(strs); i++)
     {
         printf("Adding %s\n", strs[i]);
-        assert(ASSOC_insert(&array, strs[i], 0));
+        assert(ASSOC_insert(&array, strs[i], strlen(strs[i]), 0));
         ASSOC_dump(&array); printf("\n");
     }
     for (i = 0; i < 100000; i++)
@@ -65,7 +66,7 @@ int main()
     for (i = 0; i < STATIC_SIZE(strs); i++)
     {
         printf("Adding %s\n", strs[i]);
-        assert(!ASSOC_insert(&array, strs[i], 0));
+        assert(!ASSOC_insert(&array, strs[i], strlen(strs[i]), 0));
         ASSOC_dump(&array); printf("\n");
     }
     for (i = 0; i < 100000; i++)
@@ -79,7 +80,7 @@ int main()
     for (i = 0; i < STATIC_SIZE(strs); i++)
     {
         printf("Removing %s\n", strs[i]);
-        assert(ASSOC_remove(&array, strs[i]));
+        assert(ASSOC_remove(&array, strs[i], strlen(strs[i])));
         ASSOC_dump(&array); printf("\n");
     }
     for (i = 0; i < 100000; i++)
@@ -94,7 +95,7 @@ int main()
     for (i = 0; i < STATIC_SIZE(strs); i++)
     {
         printf("Removing %s\n", strs[i]);
-        assert(!ASSOC_remove(&array, strs[i]));
+        assert(!ASSOC_remove(&array, strs[i], strlen(strs[i])));
         ASSOC_dump(&array); printf("\n");
     }
     ASSOC_cleanupArray(&array);

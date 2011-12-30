@@ -6,6 +6,7 @@
 #include "error.h"
 #include "syntax.h"
 #include "assocarray.h"
+#include "semantic.h"
 
 typedef void (*NotificationCallback)(const char *msg);
 
@@ -167,6 +168,7 @@ const char *nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_OPERATOR_FUNCTION)
         STRINGCASE(STX_PLATFORM)
         STRINGCASE(STX_FORPLATFORM)
+        STRINGCASE(STX_PARAMETER_LIST)
 
 
     }
@@ -347,7 +349,7 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
     return buffer;
 }
 
-void dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
+int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
 {
     NotificationCallback callback = (NotificationCallback)userData;
     char buffer[500];
@@ -364,6 +366,7 @@ void dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData
         node->previousSiblingIndex,
         node->nextSiblingIndex);
     callback(buffer);
+    return 1;
 }
 
 void compileFile(const char *fileName, NotificationCallback callback)
@@ -605,7 +608,17 @@ void compileFile(const char *fileName, NotificationCallback callback)
         callback(buffer);
         goto cleanup;
     }
+    printf("Syntax checking finished.\n");
     STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
+    // Semantic checking
+    SMC_checkSyntaxTree(parserResult.tree);
+    if (ERR_isError())
+    {
+        if (ERR_catchError(E_SMC_CORRUPT_SYNTAX_TREE))
+        {
+            sprintf(buffer, "Syntax tree is corrupt!\n");
+        }
+    }
 cleanup:
     LEX_cleanUpLexerResult(&lexerResult);
 }

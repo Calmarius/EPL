@@ -39,6 +39,8 @@
 		<Unit filename="assocarray.h" />
 		<Unit filename="assoctest.c">
 			<Option compilerVar="CC" />
+			<Option compile="0" />
+			<Option link="0" />
 		</Unit>
 		<Unit filename="assoctest.h" />
 		<Unit filename="error.c">
@@ -51,8 +53,6 @@
 		<Unit filename="lexer.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
-			<Option compile="0" />
-			<Option link="0" />
 		</Unit>
 		<Unit filename="semantic.c">
 			<Option compilerVar="CC" />
