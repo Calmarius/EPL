@@ -355,11 +355,15 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
     char buffer[500];
     sprintf(
         buffer,
-        "%*s %s %s [#%d, %d - %d, <= %d  %d =>]\n",
+        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d =>]\n",
         level*4,
         "",
         nodeTypeToString(node->nodeType),
         attributeToString(node),
+        node->beginLine,
+        node->beginColumn,
+        node->endLine,
+        node->endColumn,
         node->id,
         node->firstChildIndex,
         node->lastChildIndex,

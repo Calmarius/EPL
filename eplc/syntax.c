@@ -247,6 +247,10 @@ static void skipComments(struct SyntaxContext *context)
 
 static void acceptCurrent(struct SyntaxContext *context)
 {
+    struct STX_SyntaxTreeNode *node = getCurrentNode(context);
+    const struct LEX_LexerToken *token = getCurrentToken(context);
+    node->endColumn = token->endColumn;
+    node->endLine = token->endLine;
     advance(context);
     skipComments(context);
 }
@@ -279,16 +283,24 @@ static int expect(
 
 static void ascendToParent(struct SyntaxContext *context)
 {
-    assert(getCurrentNode(context)->parentIndex != -1);
+    struct STX_SyntaxTreeNode *node = getCurrentNode(context);
+    struct STX_SyntaxTreeNode *parentNode;
+    assert(node->parentIndex != -1);
     context->currentNodeIndex = getCurrentNode(context)->parentIndex;
     context->currentAttributeIndex = getCurrentNode(context)->attributeIndex; //< getcurrent is now the parentnode.
+    parentNode = getCurrentNode(context);
+    parentNode->endColumn = node->endColumn;
+    parentNode->endLine = node->endLine;
 }
 
 static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type)
 {
     struct STX_SyntaxTreeNode *node = allocateNode(context->tree);
+    const struct LEX_LexerToken *token = getCurrentToken(context);
     initializeNode(node);
     node->nodeType = type;
+    node->beginColumn = token->beginColumn;
+    node->beginLine = token->beginLine;
     appendChild(context->tree, getCurrentNode(context), node);
     context->currentNodeIndex = node->id;
     if (context->latestComment)

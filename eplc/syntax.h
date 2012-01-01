@@ -145,6 +145,10 @@ struct STX_SyntaxTreeNode
     int nextSiblingIndex;
     int previousSiblingIndex;
     int attributeIndex;
+    int beginLine;
+    int beginColumn;
+    int endLine;
+    int endColumn;
     enum STX_NodeType nodeType;
     int allocated;
     struct STX_SyntaxTree *belongsTo;
