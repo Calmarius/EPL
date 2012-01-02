@@ -109,6 +109,8 @@ struct LEX_LexerResult
     struct LEX_LexerToken *tokens;
     int columnPos;
     int linePos;
+    char **strings;
+    int stringCount;
 };
 
 /**

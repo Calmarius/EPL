@@ -69,6 +69,10 @@ struct LexerContext
     int lfCount;
     int crCount;
     struct LEX_LexerToken *currentToken;
+    int stringsAllocated;
+    int currentStringLength;
+    int currentStringAllocated;
+    char *currentString;
 };
 
 static int getCurrentLine(struct LexerContext *lexerContext)
@@ -702,6 +706,12 @@ static int doTokenization(struct LexerContext *context)
 
 void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult)
 {
+    int i;
+    for (i = 0; i < lexerResult->stringCount; i++)
+    {
+        free(lexerResult->strings[i]);
+    }
+    free(lexerResult->strings);
     free(lexerResult->tokens);
 }
 
@@ -757,13 +767,163 @@ static void mergeAdjacentStrings(struct LexerContext *context)
     context->tokenCount = j;
 }
 
+static void createBinaryString(struct LexerContext *context)
+{
+    assert(!context->currentStringAllocated);
+    context->currentStringAllocated = 20;
+    context->currentString = malloc(context->currentStringAllocated * sizeof(char));
+    context->currentStringLength = 0;
+}
+
+static void finalizeBinaryString(struct LexerContext *context, const char **string, int *length)
+{
+    struct LEX_LexerResult *result = context->result;
+
+    assert(context->currentStringAllocated);
+    assert(string);
+    assert(length);
+    if (result->stringCount == context->stringsAllocated)
+    {
+        if (context->stringsAllocated)
+        {
+            context->stringsAllocated <<= 1;
+        }
+        else
+        {
+            context->stringsAllocated = 20;
+        }
+        result->strings = realloc(result->strings, context->stringsAllocated * sizeof(*result->strings));
+    }
+    result->strings[result->stringCount++] = context->currentString;
+    context->currentStringAllocated = 0;
+    *string = context->currentString;
+    *length = context->currentStringLength;
+
+}
+
+static void addToBinaryString(struct LexerContext *context, char c)
+{
+    assert(context->currentStringAllocated);
+
+    if (context->currentStringLength == context->currentStringAllocated)
+    {
+        context->currentStringAllocated <<= 1;
+        context->currentString = realloc(context->currentString, context->currentStringAllocated * sizeof(*context->currentString));
+    }
+    context->currentString[context->currentStringLength++] = c;
+}
+
+static void addUtf8CharacterToBinaryString(struct LexerContext *context, int ch)
+{
+    if (ch < (1 << 7) )
+    {
+        addToBinaryString(context, (char)ch);
+    }
+    else if (ch < (1 << 11))
+    {
+        addToBinaryString(context, 0xC0 | ((ch & 0x000007C0) >> 6) );
+        addToBinaryString(context, 0x80 | (ch & 0x0000003F) );
+    }
+    else if (ch < (1 << 16))
+    {
+        addToBinaryString(context, 0xE0 | ((ch & 0x0000F000) >> 12) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00000FC0) >> 6) );
+        addToBinaryString(context, 0x80 | (ch & 0x0000003F) );
+    }
+    else if (ch < (1 << 21))
+    {
+        addToBinaryString(context, 0xF0 | ((ch & 0x00070000) >> 18) );
+        addToBinaryString(context, 0x80 | ((ch & 0x0003F000) >> 12) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00000FC0) >> 6) );
+        addToBinaryString(context, 0x80 | (ch & 0x0000003F) );
+    }
+    else if (ch < (1 << 26))
+    {
+        addToBinaryString(context, 0xF8 | ((ch & 0x03000000) >> 24) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00FC0000) >> 18) );
+        addToBinaryString(context, 0x80 | ((ch & 0x0003F000) >> 12) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00000FC0) >> 6) );
+        addToBinaryString(context, 0x80 | (ch & 0x0000003F) );
+    }
+    else if (ch < (1 << 31))
+    {
+        addToBinaryString(context, 0xFC | ((ch & 0xC0000000) >> 30) );
+        addToBinaryString(context, 0x80 | ((ch & 0x3F000000) >> 24) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00FC0000) >> 18) );
+        addToBinaryString(context, 0x80 | ((ch & 0x0003F000) >> 12) );
+        addToBinaryString(context, 0x80 | ((ch & 0x00000FC0) >> 6) );
+        addToBinaryString(context, 0x80 | (ch & 0x0000003F) );
+    }
+}
+
+static void createBinaryStrings(struct LexerContext *context)
+{
+    int i;
+    for (i = 0; i < context->tokenCount; i++)
+    {
+        struct LEX_LexerToken *token;
+        const char *c;
+        int inString = 0;
+        int inCharacter = 0;
+        int characterCode = 0;
+
+        token = &context->result->tokens[i];
+        if (token->tokenType != LEX_STRING) continue;
+        createBinaryString(context);
+        for (c = token->start; c != token->start + token->length; c++)
+        {
+            if (*c == '\"')
+            {
+                inString = !inString;
+                continue;
+            }
+            if (inString)
+            {
+                addToBinaryString(context, *c);
+            }
+            else
+            {
+                if (inCharacter)
+                {
+                    if (('0' <= *c) && (*c <= '9'))
+                    {
+                        characterCode *= 10;
+                        characterCode += *c - '0';
+                    }
+                    else
+                    {
+                        inCharacter = 0;
+                        addUtf8CharacterToBinaryString(context, characterCode);
+                    }
+                }
+                if (!inCharacter)
+                {
+                    if (*c == '#')
+                    {
+                        inCharacter = 1;
+                        characterCode = 0;
+                    }
+                }
+            }
+        }
+        if (inCharacter)
+        {
+            addUtf8CharacterToBinaryString(context, characterCode);
+        }
+        finalizeBinaryString(context, &token->start, &token->length);
+
+    }
+}
+
 struct LEX_LexerResult LEX_tokenizeString(const char *code)
 {
     struct LEX_LexerResult lexerResult;
     struct LexerContext lexerContext;
 
     lexerResult.tokenCount = 0;
+    lexerResult.stringCount = 0;
     lexerResult.tokens = 0;
+    lexerResult.strings = 0;
 
     lexerContext.current = code;
     lexerContext.result = &lexerResult;
@@ -773,10 +933,15 @@ struct LEX_LexerResult LEX_tokenizeString(const char *code)
     lexerContext.lfCount = 1;
     lexerContext.crCount = 1;
     lexerContext.currentToken = 0;
+    lexerContext.stringsAllocated = 0;
+    lexerContext.currentStringAllocated = 0;
+    lexerContext.currentStringLength = 0;
 
     doTokenization(&lexerContext);
 
     mergeAdjacentStrings(&lexerContext);
+
+    createBinaryStrings(&lexerContext);
 
     startNewToken(&lexerContext, LEX_SPEC_EOF);
     finishCurrentToken(&lexerContext);

@@ -380,6 +380,8 @@ void compileFile(const char *fileName, NotificationCallback callback)
     struct STX_ParserResult parserResult;
     char buffer[200];
 
+    setbuf(stdout, 0);
+
     if (ERR_isError())
     {
         return;
