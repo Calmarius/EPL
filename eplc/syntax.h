@@ -126,8 +126,7 @@ struct STX_NodeAttribute
     int nameLength;
     const char *comment;
     int commentLength;
-
-    int refereceId;
+    int symbolTableEntry;
 
     struct STX_SyntaxTree *belongsTo;
 
@@ -152,6 +151,7 @@ struct STX_SyntaxTreeNode
     enum STX_NodeType nodeType;
     int allocated;
     struct STX_SyntaxTree *belongsTo;
+    int scopeId;
 };
 
 /**

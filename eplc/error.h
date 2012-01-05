@@ -56,6 +56,7 @@ enum ERR_ErrorCode
     E_STX_PLATFORM_EXPECTED,
 
     E_SMC_CORRUPT_SYNTAX_TREE,
+    E_SMC_REDEFINITION_OF_SYMBOL,
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);

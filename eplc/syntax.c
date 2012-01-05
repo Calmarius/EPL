@@ -99,6 +99,7 @@ static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
             tree->nodes, tree->nodesAllocated * sizeof(struct STX_SyntaxTreeNode));
     }
     node = &tree->nodes[tree->nodeCount];
+    node->scopeId = -1;
     node->allocated = 1;
     node->id = tree->nodeCount;
     node->belongsTo = tree;
@@ -946,7 +947,8 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
  * <SimpleStatement> |
  * <SwitchStatement> |
  * <BreakStatement> |
- * <ContinueStatement>
+ * <ContinueStatement> |
+ * <Block>
  *
  */
 static int parseStatement(struct SyntaxContext *context)
@@ -979,6 +981,9 @@ static int parseStatement(struct SyntaxContext *context)
             if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
             descendNewNode(context, STX_BREAK);
             ascendToParent(context);
+        break;
+        case LEX_LEFT_BRACE:
+            if (!parseBlock(context)) return 0;
         break;
         default:
             if (!parseSimpleStatement(context)) return 0;

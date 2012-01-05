@@ -22,7 +22,7 @@ struct ASSOC_KeyValuePair
 {
     const char *key;
     int keyLength;
-    const void *value;
+    void *value;
 };
 
 /**

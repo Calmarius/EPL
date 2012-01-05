@@ -3,6 +3,11 @@
 
 #include "syntax.h"
 
-int SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree);
+struct SMC_CheckerResult
+{
+    struct STX_SyntaxTreeNode *lastNode;
+};
+
+struct SMC_CheckerResult SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree);
 
 #endif // SEMANTIC_H

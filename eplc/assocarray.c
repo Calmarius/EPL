@@ -425,7 +425,13 @@ void mergeBlocks(
     cleanupBlock(right, 0);
 }
 
-int removeFromBlock(struct ASSOC_Array *array, struct AssocBlock *block, const char *key, int moveDown);
+int removeFromBlock(
+    struct ASSOC_Array *array,
+    struct AssocBlock *block,
+    const char *key,
+    int keyLength,
+    int moveDown
+);
 
 /**
  * Eliminates blocks with too few elements.
@@ -460,7 +466,7 @@ void eliminateUndersizedBlock(struct ASSOC_Array *array, struct AssocBlock *bloc
             }
         }
         // Remove that element, but use it as separator when merging the two child nodes.
-        removeFromBlock(array, parent, kvp->key, 1);
+        removeFromBlock(array, parent, kvp->key, kvp->keyLength, 1);
     }
     else
     {
@@ -493,6 +499,7 @@ int removeFromBlock(
     struct ASSOC_Array *array,
     struct AssocBlock *block,
     const char *key,
+    int keyLength,
     int moveDown)
 {
     int removalPos;
@@ -500,7 +507,10 @@ int removeFromBlock(
     // Find the element in the current block.
     for (removalPos = 0; removalPos < block->elementCount; removalPos++)
     {
-        int result = strcmp(key, block->keys[removalPos].key);
+        struct ASSOC_KeyValuePair kvp;
+        kvp.key = key;
+        kvp.keyLength = keyLength;
+        int result = compareKey(&kvp, &block->keys[removalPos]);
         if (result < 0)
         {
             // The key not found.
@@ -542,7 +552,7 @@ int removeFromBlock(
     if (block->pointers[removalPos])
     {
         // Try the appropriate child node.
-        return removeFromBlock(array, block->pointers[removalPos], key, moveDown);
+        return removeFromBlock(array, block->pointers[removalPos], key, keyLength, moveDown);
     }
     // At this point, we are in a leaf node, element not found, return zero.
     return 0;
@@ -566,10 +576,44 @@ int ASSOC_insert(struct ASSOC_Array *array, const char *key, int keyLength, void
 
 int ASSOC_remove(struct ASSOC_Array *array, const char *key, int keyLength)
 {
-    return removeFromBlock(array, array->root, key, 0);
+    return removeFromBlock(array, array->root, key, keyLength, 0);
 }
-/*int ASSOC_find(struct ASSOC_Array *array, const char *key);
-*/
+
+static void *findInBlock(struct AssocBlock *block, const char *key, int keyLength)
+{
+    int foundPos;
+    // Find the element in the current block.
+    for (foundPos = 0; foundPos < block->elementCount; foundPos++)
+    {
+        struct ASSOC_KeyValuePair kvp;
+        kvp.key = key;
+        kvp.keyLength = keyLength;
+        int result = compareKey(&kvp, &block->keys[foundPos]);
+        if (result < 0)
+        {
+            // The key not found.
+            break;
+        }
+        else if (!result)
+        {
+            // Element found.
+            return block->keys[foundPos].value;
+        }
+    }
+    // At this point the element is not found in the block.
+    if (block->pointers[foundPos])
+    {
+        // Try the appropriate child node.
+        return findInBlock(block->pointers[foundPos], key, keyLength);
+    }
+    return 0;
+}
+
+void *ASSOC_find(struct ASSOC_Array *array, const char *key, int keyLength)
+{
+    return findInBlock(array->root, key, keyLength);
+}
+
 int ASSOC_preorderTransversal(
     struct ASSOC_Array *array,
     int (*callback)(struct ASSOC_KeyValuePair*, int, int, void*),

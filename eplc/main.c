@@ -355,7 +355,7 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
     char buffer[500];
     sprintf(
         buffer,
-        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d =>]\n",
+        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d => {%d}]\n",
         level*4,
         "",
         nodeTypeToString(node->nodeType),
@@ -368,7 +368,8 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
         node->firstChildIndex,
         node->lastChildIndex,
         node->previousSiblingIndex,
-        node->nextSiblingIndex);
+        node->nextSiblingIndex,
+        node->scopeId);
     callback(buffer);
     return 1;
 }
@@ -378,6 +379,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
     const char *fileContent = readFileContents(fileName);
     struct LEX_LexerResult lexerResult;
     struct STX_ParserResult parserResult;
+    struct SMC_CheckerResult checkerResult;
     char buffer[200];
 
     setbuf(stdout, 0);
@@ -617,14 +619,35 @@ void compileFile(const char *fileName, NotificationCallback callback)
     printf("Syntax checking finished.\n");
     STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
     // Semantic checking
-    SMC_checkSyntaxTree(parserResult.tree);
+    checkerResult = SMC_checkSyntaxTree(parserResult.tree);
     if (ERR_isError())
     {
+        const struct STX_NodeAttribute *attr = STX_getNodeAttribute(checkerResult.lastNode);
+        struct STX_SyntaxTreeNode *node = checkerResult.lastNode;
+        sprintf(
+            buffer,
+            "[%d; %d] - [%d; %d] %.*s (node: %s): ",
+            node->beginLine,
+            node->beginColumn,
+            node->endLine,
+            node->endColumn,
+            attr ? attr->nameLength : 0,
+            attr ? attr->name : "",
+            nodeTypeToString(node->nodeType)
+        );
+        callback(buffer);
         if (ERR_catchError(E_SMC_CORRUPT_SYNTAX_TREE))
         {
             sprintf(buffer, "Syntax tree is corrupt!\n");
         }
+        else if (ERR_catchError(E_SMC_REDEFINITION_OF_SYMBOL))
+        {
+            sprintf(buffer, "Redefinition of symbol!\n");
+        }
+        callback(buffer);
+        goto cleanup;
     }
+    STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
 cleanup:
     LEX_cleanUpLexerResult(&lexerResult);
 }
