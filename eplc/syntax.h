@@ -39,8 +39,9 @@ enum STX_NodeType
     STX_BREAK,
     STX_OPERATOR_FUNCTION,
     STX_PLATFORM,
-    STX_FORPLATFORM,
+    STX_FOR_PLATFORMS,
     STX_PARAMETER_LIST,
+    STX_PLATFORM_LIST,
 };
 
 enum STX_ModuleAttribute
@@ -191,5 +192,7 @@ void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
 const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
+
+const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 
 #endif // SYNTAX_H

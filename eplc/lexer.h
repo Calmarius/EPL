@@ -85,7 +85,7 @@ enum LEX_TokenType
     LEX_KW_NEG,
     LEX_KW_DEREF,
     LEX_KW_EXTERNAL,
-    LEX_KW_PLATFORM,
+    LEX_KW_FOR,
 
     LEX_SPEC_EOF,
     LEX_SPEC_DELETED,

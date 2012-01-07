@@ -33,6 +33,7 @@ struct SemanticContext
 };
 
 static int checkStatement(struct SemanticContext *context);
+static int checkDeclaration(struct SemanticContext *context);
 
 static struct Scope *allocateScope(
     struct SemanticContext *context,
@@ -130,7 +131,12 @@ static int addSymbolToCurrentScope(
 
 static int handleSymbol(struct ASSOC_KeyValuePair *kvp, int level, int index, void *userData)
 {
-    printf("%.*s : %d\n", kvp->keyLength, kvp->key, ((struct STX_SyntaxTreeNode*)kvp->value)->nodeType);
+    printf(
+        "%.*s : %s\n",
+        kvp->keyLength,
+        kvp->key,
+        STX_nodeTypeToString(((struct STX_SyntaxTreeNode*)kvp->value)->nodeType)
+    );
     return 1;
 }
 
@@ -142,10 +148,10 @@ static void dumpScopes(struct SemanticContext *context)
         struct Scope *scope = context->scopePointers[i];
         const struct STX_NodeAttribute *attr = STX_getNodeAttribute(scope->node);
         printf(
-            "Scope %p, parentScope: %p, nodeTypeId : %d, name : %.*s\n",
+            "Scope %p, parentScope: %p, nodeType : %s, name : %.*s\n",
             scope,
             scope->parentScope,
-            scope->node->nodeType,
+            STX_nodeTypeToString(scope->node->nodeType),
             attr ? attr->nameLength : 0,
             attr ? attr->name : ""
         );
@@ -153,10 +159,14 @@ static void dumpScopes(struct SemanticContext *context)
     }
 }
 
-static int enterCurrentNode(struct SemanticContext *context)
+static int enterCurrentNode(struct SemanticContext *context, int needError)
 {
     if (context->currentNode->firstChildIndex == -1)
     {
+        if (needError)
+        {
+            ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+        }
         return 0;
     }
     context->currentNode = &context->currentNode->belongsTo->nodes[context->currentNode->firstChildIndex];
@@ -175,9 +185,16 @@ static int assertNodeType(struct SemanticContext *context, enum STX_NodeType typ
     return 1;
 }
 
-static int moveToNextNode(struct SemanticContext *context)
+static int moveToNextNode(struct SemanticContext *context, int needError)
 {
-    if (getCurrentNode(context)->nextSiblingIndex < 0) return 0;
+    if (getCurrentNode(context)->nextSiblingIndex < 0)
+    {
+        if (needError)
+        {
+            ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+        }
+        return 0;
+    }
     context->currentNode = &context->tree->nodes[context->currentNode->nextSiblingIndex];
     context->currentNode->scopeId = context->currentScope->id;
     return 1;
@@ -195,17 +212,41 @@ static int checkParameter(struct SemanticContext *context)
     return addSymbolToCurrentScope(context);
 }
 
-static int checkParameterList(struct SemanticContext *context)
+static int checkParameterList(
+    struct SemanticContext *context,
+    int minParameterCount,
+    int maxParameterCount
+)
 {
+    int count = 0;
     if (!assertNodeType(context, STX_PARAMETER_LIST)) return 0;
-    if (enterCurrentNode(context))
+    if (enterCurrentNode(context, 0))
     {
         do
         {
             if (!checkParameter(context)) return 0;
+            count++;
         }
-        while (moveToNextNode(context));
+        while (moveToNextNode(context, 0));
         leaveCurrentNode(context);
+        if (minParameterCount >= 0)
+        {
+            if (count < minParameterCount)
+            {
+                leaveCurrentNode(context);
+                ERR_raiseError(E_SMC_TOO_FEW_PARAMETERS);
+                return 0;
+            }
+        }
+        if (maxParameterCount >= 0)
+        {
+            if (count > maxParameterCount)
+            {
+                leaveCurrentNode(context);
+                ERR_raiseError(E_SMC_TOO_MANY_PARAMETERS);
+                return 0;
+            }
+        }
     }
     return 1;
 }
@@ -214,16 +255,56 @@ static int checkBlock(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_BLOCK)) return 0;
     descendNewScope(context);
-    if (enterCurrentNode(context))
+    if (enterCurrentNode(context, 0))
     {
         do
         {
             if (!checkStatement(context)) return 0;
         }
-        while (moveToNextNode(context));
+        while (moveToNextNode(context, 0));
         leaveCurrentNode(context);
     }
     ascendToParentScope(context);
+    return 1;
+}
+
+static int checkIfStatement(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_IF_STATEMENT)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+    if (!moveToNextNode(context, 1)) return 0;
+    if (!checkBlock(context)) return 0;
+    if (moveToNextNode(context, 0))
+    {
+        switch (getCurrentNodeType(context))
+        {
+            case STX_BLOCK:
+                if (!checkBlock(context)) return 0;
+            break;
+            case STX_IF_STATEMENT:
+                if (!checkIfStatement(context)) return 0;
+            break;
+            default:
+                ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+                return 0;
+            break;
+        }
+    }
+    leaveCurrentNode(context);
+
+    return 1;
+}
+
+static int checkLoopStatement(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_LOOP_STATEMENT)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+    if (!checkBlock(context)) return 0;
+    if (moveToNextNode(context, 0))
+    {
+        if (!checkBlock(context)) return 0;
+    }
+    leaveCurrentNode(context);
     return 1;
 }
 
@@ -236,9 +317,16 @@ static int checkStatement(struct SemanticContext *context)
         break;
         case STX_EXPRESSION_STATEMENT:
         case STX_ASSIGNMENT:
+        case STX_RETURN_STATEMENT:
         break;
         case STX_BLOCK:
             if (!checkBlock(context)) return 0;
+        break;
+        case STX_IF_STATEMENT:
+            if (!checkIfStatement(context)) return 0;
+        break;
+        case STX_LOOP_STATEMENT:
+            if (!checkLoopStatement(context)) return 0;
         break;
         default:
             ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
@@ -260,16 +348,12 @@ static int checkFunction(struct SemanticContext *context)
     }
 
     descendNewScope(context);
-    if (!enterCurrentNode(context))
-    {
-        ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
-        return 0;
-    }
+    if (!enterCurrentNode(context, 1)) return 0;
     {
         if (!assertNodeType(context, STX_TYPE)) return 0;
-        if (!moveToNextNode(context)) return 0;
-        if (!checkParameterList(context)) return 0;
-        if (!moveToNextNode(context)) return 0;
+        if (!moveToNextNode(context, 1)) return 0;
+        if (!checkParameterList(context, -1, -1)) return 0;
+        if (!moveToNextNode(context, 1)) return 0;
         if (!checkBlock(context)) return 0;
     }
     ascendToParentScope(context);
@@ -277,33 +361,100 @@ static int checkFunction(struct SemanticContext *context)
     return 1;
 }
 
+static int checkOperatorFunction(struct SemanticContext *context)
+{
+    const struct STX_NodeAttribute *attr;
+
+    if (!assertNodeType(context, STX_OPERATOR_FUNCTION)) return 0;
+    attr = STX_getNodeAttribute(getCurrentNode(context));
+    if (attr->functionAttributes.isExternal)
+    {
+        return 1;
+    }
+
+    descendNewScope(context);
+    if (!enterCurrentNode(context, 1)) return 0;
+    {
+        if (!assertNodeType(context, STX_TYPE)) return 0;
+        if (!moveToNextNode(context, 1)) return 0;
+        if (!checkParameterList(context, 2, 2)) return 0;
+        if (!moveToNextNode(context, 1)) return 0;
+        if (!checkBlock(context)) return 0;
+    }
+    ascendToParentScope(context);
+    leaveCurrentNode(context);
+    return 1;
+}
+
+static int checkForPlatformDeclaration(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_FOR_PLATFORMS)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+    {
+        if (!assertNodeType(context, STX_PLATFORM_LIST)) return 0;
+        if (!moveToNextNode(context, 1)) return 0;
+        if (!assertNodeType(context, STX_DECLARATIONS)) return 0;
+        if (!enterCurrentNode(context, 0))
+        {
+            ERR_raiseError(E_SMC_EMPTY_PLATFORM_BLOCK);
+            return 0;
+        }
+        {
+            do
+            {
+                if (!checkDeclaration(context)) return 0;
+            }
+            while (moveToNextNode(context, 0));
+        }
+        leaveCurrentNode(context); // STX_DECLARATIONS;
+    }
+    leaveCurrentNode(context); // STX_FOR_PLATFORMS;
+    return 1;
+}
+
+static int checkDeclaration(struct SemanticContext *context)
+{
+    switch (getCurrentNodeType(context))
+    {
+        case STX_FUNCTION:
+            if (!addSymbolToCurrentScope(context)) return 0;
+            if (!checkFunction(context)) return 0;
+        break;
+        case STX_OPERATOR_FUNCTION:
+            if (!addSymbolToCurrentScope(context)) return 0;
+            if (!checkOperatorFunction(context)) return 0;
+        break;
+        case STX_VARDECL:
+            if (!addSymbolToCurrentScope(context)) return 0;
+        break;
+        case STX_FOR_PLATFORMS:
+            if (!checkForPlatformDeclaration(context)) return 0;
+        break;
+        default:
+            ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+            return 0;
+        break;
+    }
+    return 1;
+}
+
 static int checkModule(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_MODULE)) return 0;
-    if (!enterCurrentNode(context))
-    {
-        ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
-        return 0;
-    }
+    if (!enterCurrentNode(context, 1)) return 0;
     do
     {
         switch (getCurrentNodeType(context))
         {
-            case STX_FUNCTION:
-                if (!addSymbolToCurrentScope(context)) return 0;
-                if (!checkFunction(context)) return 0;
-            break;
-            case STX_VARDECL:
-                if (!addSymbolToCurrentScope(context)) return 0;
-            break;
             case STX_BLOCK:
                 checkBlock(context);
             break;
             default:
+                if (!checkDeclaration(context)) return 0;
             break;
         }
     }
-    while (moveToNextNode(context));
+    while (moveToNextNode(context, 0));
     leaveCurrentNode(context);
 
     return 1;
@@ -312,11 +463,7 @@ static int checkModule(struct SemanticContext *context)
 int checkRootNode(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_ROOT)) return 0;
-    if (!enterCurrentNode(context))
-    {
-        ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
-        return 0;
-    }
+    if (!enterCurrentNode(context, 1)) return 0;
     if (!assertNodeType(context, STX_MODULE)) return 0;
     if (!checkModule(context)) return 0;
 

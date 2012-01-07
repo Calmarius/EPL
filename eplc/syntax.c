@@ -735,7 +735,7 @@ static int parseBlock(struct SyntaxContext *context);
 
 /**
  * <IfStatement> ::=
- * 'if' '(' <Expression> ')' <Block> ('else' <Block> )?
+ * 'if' '(' <Expression> ')' <Block> ('else' (<Block> | <IfStatement>) )?
  */
 
 static int parseIfStatement(struct SyntaxContext *context)
@@ -750,7 +750,19 @@ static int parseIfStatement(struct SyntaxContext *context)
     if (getCurrentTokenType(context) == LEX_KW_ELSE)
     {
         acceptCurrent(context);
-        if (!parseBlock(context)) return 0;
+        switch (getCurrentTokenType(context))
+        {
+            case LEX_LEFT_BRACE:
+                if (!parseBlock(context)) return 0;
+            break;
+            case LEX_KW_IF:
+                if (!parseIfStatement(context)) return 0;
+            break;
+            default:
+                ERR_raiseError(E_STX_BLOCK_OR_IF_STATEMENT_EXPECTED);
+                return 0;
+            break;
+        }
     }
 
     ascendToParent(context);
@@ -1550,31 +1562,12 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
  */
 static int parsePlatformDeclaration(struct SyntaxContext *context)
 {
-    descendNewNode(context, STX_PLATFORM);
+    descendNewNode(context, STX_FOR_PLATFORMS);
     {
-        if (!expect(context, LEX_KW_PLATFORM, E_STX_PLATFORM_EXPECTED)) return 0;
-        descendNewNode(context, STX_FORPLATFORM);
+        descendNewNode(context, STX_PLATFORM_LIST);
         {
-            allocateAttributeForCurrent(context);
-            if (getCurrentTokenType(context) == LEX_STRING)
-            {
-                const struct LEX_LexerToken *token = getCurrentToken(context);
-                struct STX_NodeAttribute *attr = getCurrentAttribute(context);
-                attr->name = token->start;
-                attr->nameLength = token->length;
-                acceptCurrent(context);
-            }
-            else
-            {
-                ERR_raiseError(E_STX_STRING_EXPECTED);
-                return  0;
-            }
-        }
-        ascendToParent(context);
-        while (getCurrentTokenType(context) == LEX_COMMA)
-        {
-            acceptCurrent(context);
-            descendNewNode(context, STX_FORPLATFORM);
+            if (!expect(context, LEX_KW_FOR, E_STX_PLATFORM_EXPECTED)) return 0;
+            descendNewNode(context, STX_PLATFORM);
             {
                 allocateAttributeForCurrent(context);
                 if (getCurrentTokenType(context) == LEX_STRING)
@@ -1592,7 +1585,30 @@ static int parsePlatformDeclaration(struct SyntaxContext *context)
                 }
             }
             ascendToParent(context);
+            while (getCurrentTokenType(context) == LEX_COMMA)
+            {
+                acceptCurrent(context);
+                descendNewNode(context, STX_PLATFORM);
+                {
+                    allocateAttributeForCurrent(context);
+                    if (getCurrentTokenType(context) == LEX_STRING)
+                    {
+                        const struct LEX_LexerToken *token = getCurrentToken(context);
+                        struct STX_NodeAttribute *attr = getCurrentAttribute(context);
+                        attr->name = token->start;
+                        attr->nameLength = token->length;
+                        acceptCurrent(context);
+                    }
+                    else
+                    {
+                        ERR_raiseError(E_STX_STRING_EXPECTED);
+                        return  0;
+                    }
+                }
+                ascendToParent(context);
+            }
         }
+        ascendToParent(context);
         descendNewNode(context, STX_DECLARATIONS);
         {
             if (!expect(context, LEX_LEFT_BRACE, E_STX_LEFT_BRACE_EXPECTED)) return 0;
@@ -1642,7 +1658,7 @@ static int parseDeclaration(struct SyntaxContext *context)
         case LEX_KW_FUNCPTR:
             if (!parseFuncPtrDeclaration(context)) return 0;
         break;
-        case LEX_KW_PLATFORM:
+        case LEX_KW_FOR:
             if (!parsePlatformDeclaration(context)) return 0;
         break;
         default:
@@ -1754,3 +1770,51 @@ struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree)
     return &tree->nodes[tree->rootNodeIndex];
 }
 
+#define STRINGCASE(x) case x : return #x;
+
+const char *STX_nodeTypeToString(enum STX_NodeType nodeType)
+{
+    switch (nodeType)
+    {
+        STRINGCASE(STX_ROOT)
+        STRINGCASE(STX_MODULE)
+        STRINGCASE(STX_BLOCK)
+        STRINGCASE(STX_DECLARATIONS)
+        STRINGCASE(STX_TYPE)
+        STRINGCASE(STX_VARDECL)
+        STRINGCASE(STX_TYPE_PREFIX)
+        STRINGCASE(STX_PARAMETER)
+        STRINGCASE(STX_ARGUMENT_LIST)
+        STRINGCASE(STX_FUNCTION)
+        STRINGCASE(STX_EXPRESSION_STATEMENT)
+        STRINGCASE(STX_TERM)
+        STRINGCASE(STX_RETURN_STATEMENT)
+        STRINGCASE(STX_EXPRESSION)
+        STRINGCASE(STX_OPERATOR)
+        STRINGCASE(STX_IF_STATEMENT)
+        STRINGCASE(STX_LOOP_STATEMENT)
+        STRINGCASE(STX_ASSIGNMENT)
+        STRINGCASE(STX_NAMESPACE)
+        STRINGCASE(STX_USING)
+        STRINGCASE(STX_QUALIFIED_NAME)
+        STRINGCASE(STX_QUALIFIED_NAME_PART)
+        STRINGCASE(STX_STRUCT)
+        STRINGCASE(STX_FIELD)
+        STRINGCASE(STX_COMMENT)
+        STRINGCASE(STX_FUNCPTR)
+        STRINGCASE(STX_SWITCH)
+        STRINGCASE(STX_CASE)
+        STRINGCASE(STX_CONTINUE)
+        STRINGCASE(STX_BREAK)
+        STRINGCASE(STX_OPERATOR_FUNCTION)
+        STRINGCASE(STX_PLATFORM)
+        STRINGCASE(STX_FOR_PLATFORMS)
+        STRINGCASE(STX_PARAMETER_LIST)
+        STRINGCASE(STX_PLATFORM_LIST)
+
+
+    }
+    return "<UNKNOWN>";
+}
+
+#undef STRINGCASE
