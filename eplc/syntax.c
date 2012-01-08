@@ -508,7 +508,7 @@ static int isInfixOperator(const struct LEX_LexerToken *token)
     return 0;
 }
 
-const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node)
+struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node)
 {
     if (node->attributeIndex == -1)
     {
@@ -777,7 +777,13 @@ static int parseIfStatement(struct SyntaxContext *context)
 
 static int parseLoopNextStatement(struct SyntaxContext *context)
 {
+    struct STX_NodeAttribute *attr;
+
     descendNewNode(context, STX_LOOP_STATEMENT);
+    allocateAttributeForCurrent(context);
+    attr = getCurrentAttribute(context);
+    attr->loopAttributes.hasBreak = 0;
+
     if (!expect(context, LEX_KW_LOOP, E_STX_LOOP_EXPECTED)) return 0;
     if (!parseBlock(context)) return 0;
     if (getCurrentTokenType(context) == LEX_KW_NEXT)
@@ -951,6 +957,53 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
 }
 
 /**
+ * <BreakStatement> ::=
+ *  'break' integer? ';'
+ * <ContinueStatement> ::=
+ *  'continue' integer? ';'
+ */
+static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_TokenType type)
+{
+    struct STX_NodeAttribute *attr;
+
+    switch (type)
+    {
+        case LEX_KW_BREAK:
+        {
+            descendNewNode(context, STX_BREAK);
+        }
+        break;
+        case LEX_KW_CONTINUE:
+        {
+            descendNewNode(context, STX_CONTINUE);
+        }
+        break;
+        default:
+        {
+            assert(0);
+        }
+        break;
+    }
+    allocateAttributeForCurrent(context);
+    attr = getCurrentAttribute(context);
+    attr->breakContinueAttributes.associatedNodeId = -1;
+    if (!expect(context, LEX_KW_BREAK, E_STX_BREAK_OR_CONTINUE_EXPECTED)) return 0;
+    if (isIntegerNumberToken(getCurrentTokenType(context)))
+    {
+        int level = getIntegerValue(getCurrentToken(context));
+        attr->breakContinueAttributes.levels = level;
+        acceptCurrent(context);
+    }
+    else
+    {
+        attr->breakContinueAttributes.levels = 1;
+    }
+    if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
+    ascendToParent(context);
+    return 1;
+}
+
+/**
  * <Statement> ::=
  * <ReturnStatement> |
  * <IfStatement> |
@@ -982,17 +1035,14 @@ static int parseStatement(struct SyntaxContext *context)
         case LEX_KW_SWITCH:
             if (!parseSwitchDeclaration(context)) return 0;
         break;
-        case LEX_KW_CONTINUE:
-            acceptCurrent(context);
-            if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
-            descendNewNode(context, STX_CONTINUE);
-            ascendToParent(context);
-        break;
         case LEX_KW_BREAK:
-            acceptCurrent(context);
-            if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
-            descendNewNode(context, STX_BREAK);
-            ascendToParent(context);
+        case LEX_KW_CONTINUE:
+            if (
+                !parseBreakContinueStatement(context, getCurrentTokenType(context))
+            )
+            {
+                return 0;
+            }
         break;
         case LEX_LEFT_BRACE:
             if (!parseBlock(context)) return 0;

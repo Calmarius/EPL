@@ -122,6 +122,15 @@ struct STX_NodeAttribute
             int externalFileTypeLength;
             int isExternal;
         } functionAttributes;
+        struct
+        {
+            int levels;
+            int associatedNodeId;
+        } breakContinueAttributes;
+        struct
+        {
+            int hasBreak;
+        } loopAttributes;
     };
     const char *name;
     int nameLength;
@@ -191,7 +200,7 @@ void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 
 int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
-const struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
+struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
 
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 

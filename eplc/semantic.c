@@ -308,6 +308,53 @@ static int checkLoopStatement(struct SemanticContext *context)
     return 1;
 }
 
+static int isBreakableNodeType(enum STX_NodeType type)
+{
+    switch (type)
+    {
+        case STX_CASE:
+        case STX_LOOP_STATEMENT:
+            return 1;
+        break;
+        default:
+        break;
+    }
+    return 0;
+}
+
+
+static int checkBreakStatement(struct SemanticContext *context)
+{
+    const struct STX_NodeAttribute *attr;
+    struct STX_SyntaxTreeNode *node = getCurrentNode(context);
+    int remainingLevels = 1;
+
+    if (!assertNodeType(context, STX_BREAK)) return 0;
+    attr = STX_getNodeAttribute(getCurrentNode(context));
+    remainingLevels = attr->breakContinueAttributes.levels;
+
+    while (node->parentIndex >= 0)
+    {
+        if (isBreakableNodeType(node->nodeType))
+        {
+            remainingLevels--;
+        }
+
+        if (!remainingLevels)
+        {
+            if (node->nodeType == STX_LOOP_STATEMENT)
+            {
+                struct STX_NodeAttribute *attr = STX_getNodeAttribute(node);
+                attr->loopAttributes.hasBreak = 1;
+            }
+            return 1;
+        }
+        node = &node->belongsTo->nodes[node->parentIndex];
+    }
+    ERR_raiseError(E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK);
+    return 0;
+}
+
 static int checkStatement(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -318,6 +365,9 @@ static int checkStatement(struct SemanticContext *context)
         case STX_EXPRESSION_STATEMENT:
         case STX_ASSIGNMENT:
         case STX_RETURN_STATEMENT:
+        break;
+        case STX_BREAK:
+            if (!checkBreakStatement(context)) return 0;
         break;
         case STX_BLOCK:
             if (!checkBlock(context)) return 0;

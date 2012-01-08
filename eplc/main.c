@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "lexer.h"
 #include "error.h"
@@ -227,6 +228,24 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
                     attribute->parameterAttributes.direction));
         }
         break;
+        case STX_BREAK:
+        case STX_CONTINUE:
+        {
+            ptr += sprintf(
+                ptr,
+                "levels = %d ",
+                attribute->breakContinueAttributes.levels
+            );
+        }
+        break;
+        case STX_LOOP_STATEMENT:
+        {
+            ptr += sprintf(
+                ptr,
+                "hasBreak = %d ",
+                attribute->loopAttributes.hasBreak);
+        }
+        break;
         case STX_TERM:
         {
             ptr += sprintf(
@@ -307,10 +326,9 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
 
 int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
 {
-    NotificationCallback callback = (NotificationCallback)userData;
-    char buffer[500];
-    sprintf(
-        buffer,
+    FILE *f = (FILE *)userData;
+    fprintf(
+        f,
         "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d => {%d}]\n",
         level*4,
         "",
@@ -326,7 +344,6 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
         node->previousSiblingIndex,
         node->nextSiblingIndex,
         node->scopeId);
-    callback(buffer);
     return 1;
 }
 
@@ -337,6 +354,7 @@ void compileFile(const char *fileName, NotificationCallback callback)
     struct STX_ParserResult parserResult;
     struct SMC_CheckerResult checkerResult;
     char buffer[200];
+    char *fn = malloc(strlen(fileName) + 10);
 
     setbuf(stdout, 0);
 
@@ -382,14 +400,17 @@ void compileFile(const char *fileName, NotificationCallback callback)
     {
         int i;
         struct LEX_LexerToken *tokens = lexerResult.tokens;
+        sprintf(fn, "%s.tokens", fileName);
+        FILE *f = fopen(fn, "w+t");
+
         callback("Source code tokenized.\n");
         sprintf(buffer, "    %d tokens found.\n", lexerResult.tokenCount);
         callback(buffer);
         for (i = 0; i < lexerResult.tokenCount; i++)
         {
             struct LEX_LexerToken *token = &tokens[i];
-            sprintf(
-                buffer,
+            fprintf(
+                f,
                 "    %-40s  %20.*s (%-5d:%-3d) - (%-5d:%-3d)\n",
                 tokenTypeToString(token->tokenType),
                 token->length > 20 ? 20 : token->length,
@@ -399,8 +420,8 @@ void compileFile(const char *fileName, NotificationCallback callback)
                 token->endLine,
                 token->endColumn
                 );
-            callback(buffer);
         }
+        fclose(f);
     }
     // Syntax analysis
     parserResult = STX_buildSyntaxTree(lexerResult.tokens, lexerResult.tokenCount);
@@ -577,7 +598,10 @@ void compileFile(const char *fileName, NotificationCallback callback)
         goto cleanup;
     }
     printf("Syntax checking finished.\n");
-    STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
+    sprintf(fn,"%s.rawtree", fileName);
+    FILE *f = fopen(fn, "w+t");
+    STX_transversePreorder(parserResult.tree, dumpTreeCallback, f);
+    fclose(f);
     // Semantic checking
     checkerResult = SMC_checkSyntaxTree(parserResult.tree);
     if (ERR_isError())
@@ -616,12 +640,20 @@ void compileFile(const char *fileName, NotificationCallback callback)
         {
             sprintf(buffer, "Platform block is empty. \n");
         }
+        else if (ERR_catchError(E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK))
+        {
+            sprintf(buffer, "Break is not in loop or case block. \n");
+        }
 
         callback(buffer);
         goto cleanup;
     }
-    STX_transversePreorder(parserResult.tree, dumpTreeCallback, callback);
+    sprintf(fn,"%s.tree", fileName);
+    f = fopen(fn, "w+t");
+    STX_transversePreorder(parserResult.tree, dumpTreeCallback, f);
+    fclose(f);
 cleanup:
+    free(fn);
     LEX_cleanUpLexerResult(&lexerResult);
 }
 

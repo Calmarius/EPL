@@ -61,6 +61,7 @@ enum ERR_ErrorCode
     E_SMC_TOO_FEW_PARAMETERS,
     E_SMC_TOO_MANY_PARAMETERS,
     E_SMC_EMPTY_PLATFORM_BLOCK,
+    E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);
