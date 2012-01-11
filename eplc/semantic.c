@@ -322,20 +322,45 @@ static int isBreakableNodeType(enum STX_NodeType type)
     return 0;
 }
 
-
-static int checkBreakStatement(struct SemanticContext *context)
+static int isContinuableNodeType(enum STX_NodeType type)
 {
-    const struct STX_NodeAttribute *attr;
+    switch (type)
+    {
+        case STX_LOOP_STATEMENT:
+            return 1;
+        break;
+        default:
+        break;
+    }
+    return 0;
+}
+
+
+static int checkBreakContinueStatement(struct SemanticContext *context)
+{
+    struct STX_NodeAttribute *attr;
     struct STX_SyntaxTreeNode *node = getCurrentNode(context);
     int remainingLevels = 1;
+    enum STX_NodeType type = getCurrentNodeType(context);
 
-    if (!assertNodeType(context, STX_BREAK)) return 0;
+    switch (type)
+    {
+        case STX_BREAK:
+        case STX_CONTINUE:
+        break;
+        default:
+            ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+            return 0;
+    }
     attr = STX_getNodeAttribute(getCurrentNode(context));
     remainingLevels = attr->breakContinueAttributes.levels;
 
     while (node->parentIndex >= 0)
     {
-        if (isBreakableNodeType(node->nodeType))
+        if (
+            ((type == STX_BREAK) && isBreakableNodeType(node->nodeType)) ||
+            ((type == STX_CONTINUE) && isContinuableNodeType(node->nodeType))
+        )
         {
             remainingLevels--;
         }
@@ -344,14 +369,25 @@ static int checkBreakStatement(struct SemanticContext *context)
         {
             if (node->nodeType == STX_LOOP_STATEMENT)
             {
-                struct STX_NodeAttribute *attr = STX_getNodeAttribute(node);
-                attr->loopAttributes.hasBreak = 1;
+                struct STX_NodeAttribute *loopAttr = STX_getNodeAttribute(node);
+                loopAttr->loopAttributes.hasBreak = 1;
             }
+            attr->breakContinueAttributes.associatedNodeId = node->id;
             return 1;
         }
         node = &node->belongsTo->nodes[node->parentIndex];
     }
-    ERR_raiseError(E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK);
+    switch (type)
+    {
+        case STX_BREAK:
+            ERR_raiseError(E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK);
+        break;
+        case STX_CONTINUE:
+            ERR_raiseError(E_SMC_CONTINUE_IS_NOT_IN_LOOP_OR_CASE_BLOCK);
+        break;
+        default:
+        break;
+    }
     return 0;
 }
 
@@ -365,9 +401,11 @@ static int checkStatement(struct SemanticContext *context)
         case STX_EXPRESSION_STATEMENT:
         case STX_ASSIGNMENT:
         case STX_RETURN_STATEMENT:
+        case STX_SWITCH:
         break;
         case STX_BREAK:
-            if (!checkBreakStatement(context)) return 0;
+        case STX_CONTINUE:
+            if (!checkBreakContinueStatement(context)) return 0;
         break;
         case STX_BLOCK:
             if (!checkBlock(context)) return 0;

@@ -235,8 +235,9 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
         {
             ptr += sprintf(
                 ptr,
-                "levels = %d ",
-                attribute->breakContinueAttributes.levels
+                "levels = %d associatedwith = #%d",
+                attribute->breakContinueAttributes.levels,
+                attribute->breakContinueAttributes.associatedNodeId
             );
         }
         break;

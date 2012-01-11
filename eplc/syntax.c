@@ -987,7 +987,7 @@ static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_T
     allocateAttributeForCurrent(context);
     attr = getCurrentAttribute(context);
     attr->breakContinueAttributes.associatedNodeId = -1;
-    if (!expect(context, LEX_KW_BREAK, E_STX_BREAK_OR_CONTINUE_EXPECTED)) return 0;
+    if (!expect(context, type, E_STX_BREAK_OR_CONTINUE_EXPECTED)) return 0;
     if (isIntegerNumberToken(getCurrentTokenType(context)))
     {
         int level = getIntegerValue(getCurrentToken(context));
