@@ -1133,7 +1133,8 @@ static int parseTypePrefix(struct SyntaxContext *context)
     }
     else if (
         (token->tokenType == LEX_KW_POINTER) ||
-        (token->tokenType == LEX_KW_LOCALPTR))
+        (token->tokenType == LEX_KW_LOCALPTR) ||
+        (token->tokenType == LEX_KW_STATICPTR))
     {
         acceptCurrent(context);
         if (!expect(context, LEX_KW_TO, E_STX_TO_EXPECTED)) return 0;
@@ -1145,6 +1146,9 @@ static int parseTypePrefix(struct SyntaxContext *context)
             break;
             case LEX_KW_LOCALPTR:
                 attribute->typePrefixAttributes.type = STX_TP_LOCALPTR;
+            break;
+            case LEX_KW_STATICPTR:
+                attribute->typePrefixAttributes.type = STX_TP_STATICPTR;
             break;
             default:
                 assert(0); //< something is really screwed up.

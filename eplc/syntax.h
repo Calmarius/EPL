@@ -56,7 +56,8 @@ enum STX_TypePrefix
     STX_TP_POINTER,
     STX_TP_LOCALPTR,
     STX_TP_BUFFER,
-    STX_TP_HANDLE
+    STX_TP_HANDLE,
+    STX_TP_STATICPTR
 };
 
 enum STX_ParameterDirection

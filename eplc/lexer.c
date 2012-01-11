@@ -52,6 +52,7 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"ref", 3, LEX_KW_REF},
     {"relational", 10, LEX_KW_RELATIONAL},
     {"return", 6, LEX_KW_RETURN},
+    {"staticptr", 9, LEX_KW_STATICPTR},
     {"struct", 6, LEX_KW_STRUCT},
     {"switch", 6, LEX_KW_SWITCH},
     {"to", 2, LEX_KW_TO},

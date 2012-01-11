@@ -125,6 +125,7 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_KW_DEREF)
         STRINGCASE(LEX_KW_EXTERNAL)
         STRINGCASE(LEX_KW_FOR)
+        STRINGCASE(LEX_KW_STATICPTR)
 
         STRINGCASE(LEX_SPEC_EOF)
         STRINGCASE(LEX_SPEC_DELETED)
@@ -151,6 +152,7 @@ const char *typePrefixTypeToString(enum STX_TypePrefix moduleType)
         STRINGCASE(STX_TP_HANDLE)
         STRINGCASE(STX_TP_LOCALPTR)
         STRINGCASE(STX_TP_POINTER)
+        STRINGCASE(STX_TP_STATICPTR)
     }
     return "<UNKNOWN>";
 }
