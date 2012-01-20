@@ -349,17 +349,23 @@ static int parseExpression(struct SyntaxContext *context);
 
 /**
 * <ArgumentList> ::=
-* <Expression> (',' <Expression>)*
+* '(' <Expression>? (',' <Expression>)* ')'
 */
 static int parseArgumentList(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_ARGUMENT_LIST);
-    if (!parseExpression(context)) return 0;
-    while (getCurrentTokenType(context) == LEX_COMMA)
+    if (!expect(context, LEX_LEFT_PARENTHESIS, E_STX_LEFT_PARENTHESIS_EXPECTED)) return 0;
+    if (getCurrentTokenType(context) != LEX_RIGHT_PARENTHESIS)
     {
-        acceptCurrent(context);
         if (!parseExpression(context)) return 0;
+        while (getCurrentTokenType(context) == LEX_COMMA)
+        {
+            acceptCurrent(context);
+            if (!parseExpression(context)) return 0;
+        }
     }
+    if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
+
     ascendToParent(context);
     return 1;
 }
@@ -391,7 +397,7 @@ static int parseQualifiedname(struct SyntaxContext *context);
  * unaryOperator '(' <Expression> ')' |
  * '(' <Expression> ')' |
  * 'cast' <Type> '(' <Expression> ')' )
- * (( '[' <Expression> ']') | ( '(' <ArgumentList> ')' ))*
+ * (( '[' <Expression> ']') | ( '(' <ArgumentList>? ')' ))*
  */
 static int parseTerm(struct SyntaxContext *context)
 {
@@ -464,9 +470,7 @@ static int parseTerm(struct SyntaxContext *context)
         {
             case LEX_LEFT_PARENTHESIS:
             {
-                acceptCurrent(context);
                 if (!parseArgumentList(context)) return 0;
-                if (!expect(context, LEX_RIGHT_PARENTHESIS, E_STX_RIGHT_PARENTHESIS_EXPECTED)) return 0;
             }
             break;
             case LEX_LEFT_BRACKET:
@@ -1872,3 +1876,65 @@ const char *STX_nodeTypeToString(enum STX_NodeType nodeType)
 }
 
 #undef STRINGCASE
+
+struct STX_SyntaxTreeNode *STX_getParentNode(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->parentIndex < 0) return 0;
+    return &node->belongsTo->nodes[node->parentIndex];
+}
+
+struct STX_SyntaxTreeNode *STX_getFirstChild(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->firstChildIndex < 0) return 0;
+    return &node->belongsTo->nodes[node->firstChildIndex];
+}
+
+struct STX_SyntaxTreeNode *STX_getLastChild(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->lastChildIndex < 0) return 0;
+    return &node->belongsTo->nodes[node->lastChildIndex];
+}
+
+struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->nextSiblingIndex < 0) return 0;
+    return &node->belongsTo->nodes[node->nextSiblingIndex];
+}
+
+void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node)
+{
+    iterator->current = node;
+    iterator->previous = 0;
+}
+
+struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator)
+{
+    struct STX_SyntaxTreeNode *nextNode = STX_getFirstChild(iterator->current);
+    struct STX_SyntaxTreeNode *parentNode;
+
+    iterator->previous = iterator->current;
+    if (nextNode)
+    {
+        // Current node has child nodes
+        iterator->current = nextNode;
+        return nextNode;
+    }
+    else
+    {
+        // Current node don't have child nodes.
+        // So move to the next node or the next node of the parent
+        parentNode = iterator->current;
+        while (parentNode)
+        {
+            nextNode = STX_getNext(parentNode);
+            if (nextNode)
+            {
+                iterator->current = nextNode;
+                return nextNode;
+            }
+            parentNode = STX_getParentNode(parentNode);
+        }
+        return 0;
+    }
+}
+

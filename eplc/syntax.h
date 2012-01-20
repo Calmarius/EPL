@@ -138,6 +138,7 @@ struct STX_NodeAttribute
     const char *comment;
     int commentLength;
     int symbolTableEntry;
+    struct STX_SyntaxTreeNode *symbolDefinitionNode;
 
     struct STX_SyntaxTree *belongsTo;
 
@@ -190,18 +191,40 @@ struct STX_ParserResult
     int column;
 };
 
+struct STX_TreeIterator
+{
+    struct STX_SyntaxTreeNode *current;
+    struct STX_SyntaxTreeNode *previous;
+};
+
 struct STX_ParserResult STX_buildSyntaxTree(
     const struct LEX_LexerToken *token,
     int tokenCount
 );
 
-typedef int (*STX_TransverseCallback)(struct STX_SyntaxTreeNode *node, int level, void *userData);
+typedef int (*STX_TransverseCallback)(
+    struct STX_SyntaxTreeNode *node,
+    int level,
+    void *userData
+);
 
 void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 
 int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
 struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
+
+struct STX_SyntaxTreeNode *STX_getParentNode(const struct STX_SyntaxTreeNode *node);
+
+struct STX_SyntaxTreeNode *STX_getFirstChild(const struct STX_SyntaxTreeNode *node);
+
+struct STX_SyntaxTreeNode *STX_getLastChild(const struct STX_SyntaxTreeNode *node);
+
+struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node);
+
+void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node);
+
+struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator);
 
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 

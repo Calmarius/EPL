@@ -338,7 +338,7 @@ static int isContinuableNodeType(enum STX_NodeType type)
 
 static int checkBreakContinueStatement(struct SemanticContext *context)
 {
-    struct STX_NodeAttribute *attr;
+    struct STX_NodeAttribute *currentNodeAttr;
     struct STX_SyntaxTreeNode *node = getCurrentNode(context);
     int remainingLevels = 1;
     enum STX_NodeType type = getCurrentNodeType(context);
@@ -352,8 +352,8 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
             ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
             return 0;
     }
-    attr = STX_getNodeAttribute(getCurrentNode(context));
-    remainingLevels = attr->breakContinueAttributes.levels;
+    currentNodeAttr = STX_getNodeAttribute(getCurrentNode(context));
+    remainingLevels = currentNodeAttr->breakContinueAttributes.levels;
 
     while (node->parentIndex >= 0)
     {
@@ -372,7 +372,7 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
                 struct STX_NodeAttribute *loopAttr = STX_getNodeAttribute(node);
                 loopAttr->loopAttributes.hasBreak = 1;
             }
-            attr->breakContinueAttributes.associatedNodeId = node->id;
+            currentNodeAttr->breakContinueAttributes.associatedNodeId = node->id;
             return 1;
         }
         node = &node->belongsTo->nodes[node->parentIndex];
@@ -391,6 +391,28 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
     return 0;
 }
 
+static int checkCaseBlock(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_CASE)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+    if (!checkBlock(context)) return 0;
+    leaveCurrentNode(context);
+    return 1;
+}
+
+static int checkSwitchStatement(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_SWITCH)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+    if (!assertNodeType(context, STX_EXPRESSION)) return 0;
+    while (moveToNextNode(context, 0))
+    {
+        if (!checkCaseBlock(context)) return 0;
+    }
+    leaveCurrentNode(context);
+    return 1;
+}
+
 static int checkStatement(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -401,7 +423,9 @@ static int checkStatement(struct SemanticContext *context)
         case STX_EXPRESSION_STATEMENT:
         case STX_ASSIGNMENT:
         case STX_RETURN_STATEMENT:
+        break;
         case STX_SWITCH:
+            if (!checkSwitchStatement(context)) return 0;
         break;
         case STX_BREAK:
         case STX_CONTINUE:
@@ -548,7 +572,7 @@ static int checkModule(struct SemanticContext *context)
     return 1;
 }
 
-int checkRootNode(struct SemanticContext *context)
+static int checkRootNode(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_ROOT)) return 0;
     if (!enterCurrentNode(context, 1)) return 0;
@@ -559,6 +583,62 @@ int checkRootNode(struct SemanticContext *context)
 }
 
 struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree);
+
+static int checkNodeCallback(
+    struct STX_SyntaxTreeNode *node,
+    int level,
+    void *userData
+)
+{
+    struct STX_SyntaxTreeNode *parentNode;
+    struct STX_SyntaxTreeNode *firstChild;
+
+    if (node->nodeType != STX_QUALIFIED_NAME) return 1;
+    parentNode = STX_getParentNode(node);
+    if (!parentNode) return 1;
+    if (parentNode->nodeType != STX_TERM) return 1;
+    firstChild = STX_getFirstChild(node);
+    if (STX_getNext(firstChild))
+    {
+        // This is a fully qualified name.
+    }
+    else
+    {
+        // This is not a qualified name.
+    }
+    return 1;
+}
+
+static int checkExpressions(struct SemanticContext *context)
+{
+    return 1;
+    struct STX_SyntaxTree *syntaxTree = context->tree;
+
+    STX_transversePreorder(syntaxTree, checkNodeCallback, 0);
+    return 1;
+}
+
+static void setScopeIdsOnAllNodes(struct SemanticContext *context)
+{
+    struct STX_TreeIterator iterator;
+    struct STX_SyntaxTreeNode *current = STX_getRootNode(context->tree);
+
+    for (
+        STX_initializeTreeIterator(&iterator, current);
+        current;
+        current = STX_getNextPreorder(&iterator)
+    )
+    {
+        struct STX_SyntaxTreeNode *parent = STX_getParentNode(current);
+        if (parent)
+        {
+            if (current->scopeId < 0)
+            {
+                current->scopeId = parent->scopeId;
+            }
+        }
+    }
+}
 
 struct SMC_CheckerResult SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree)
 {
@@ -571,6 +651,8 @@ struct SMC_CheckerResult SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree)
     descendNewScope(&sc);
     ok = checkRootNode(&sc);
     ascendToParentScope(&sc);
+    setScopeIdsOnAllNodes(&sc);
+    checkExpressions(&sc);
     dumpScopes(&sc);
     result.lastNode = sc.currentNode;
     return result;
