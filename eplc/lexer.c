@@ -297,6 +297,14 @@ static int scanBuiltInType(struct LexerContext *context)
     {
         acceptCurrent(context);
     }
+    if (getCurrentCharacter(context) == '_' )
+    {
+        acceptCurrent(context);
+        while (isLetter(getCurrentCharacter(context)))
+        {
+            acceptCurrent(context);
+        }
+    }
     return 1;
 }
 

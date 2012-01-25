@@ -58,9 +58,11 @@ static struct Scope *allocateScope(
             );
     }
     newScope = calloc(1, sizeof(struct Scope));
-    context->scopePointers[context->scopeCount++] = newScope;
+    context->scopePointers[context->scopeCount] = newScope;
     newScope->parentScope = parentScope;
+    newScope->id = context->scopeCount;
     newScope->symbols = malloc(sizeof(*newScope->symbols));
+    context->scopeCount++;
     ASSOC_initializeArray(newScope->symbols);
     return newScope;
 }
@@ -78,8 +80,6 @@ static enum STX_NodeType getCurrentNodeType(struct SemanticContext *context)
 static void descendNewScope(struct SemanticContext *context)
 {
     context->currentScope = allocateScope(context, context->currentScope);
-    context->currentScope->id = context->currentScopeId++;
-//    context->currentScope->level = context->currentLevel;
     context->currentScope->node = getCurrentNode(context);
 }
 
@@ -559,7 +559,7 @@ static int checkModule(struct SemanticContext *context)
         switch (getCurrentNodeType(context))
         {
             case STX_BLOCK:
-                checkBlock(context);
+                if (!checkBlock(context)) return 0;
             break;
             default:
                 if (!checkDeclaration(context)) return 0;
@@ -584,6 +584,31 @@ static int checkRootNode(struct SemanticContext *context)
 
 struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree);
 
+static struct STX_SyntaxTreeNode *lookUpSymbol(
+    struct SemanticContext *context,
+    int startScopeId,
+    const char *varName,
+    int varNameLength
+)
+{
+    struct Scope *scope = context->scopePointers[startScopeId];
+    struct STX_SyntaxTreeNode *node = ASSOC_find(scope->symbols, varName, varNameLength);
+    if (node)
+    {
+        // symbol found, return it.
+        return node;
+    }
+    else
+    {
+        // try the parent scope if any.
+        if (scope->parentScope)
+        {
+            return lookUpSymbol(context, scope->parentScope->id, varName, varNameLength);
+        }
+    }
+    return 0;
+}
+
 static int checkNodeCallback(
     struct STX_SyntaxTreeNode *node,
     int level,
@@ -592,11 +617,21 @@ static int checkNodeCallback(
 {
     struct STX_SyntaxTreeNode *parentNode;
     struct STX_SyntaxTreeNode *firstChild;
+    struct SemanticContext *context = userData;
+    struct STX_SyntaxTreeNode *declarationNode;
+    enum STX_NodeType parentNodeType;
 
     if (node->nodeType != STX_QUALIFIED_NAME) return 1;
     parentNode = STX_getParentNode(node);
     if (!parentNode) return 1;
-    if (parentNode->nodeType != STX_TERM) return 1;
+    parentNodeType = parentNode->nodeType;
+    if (
+        (parentNodeType != STX_TERM) &&
+        (parentNodeType != STX_OPERATOR)
+    )
+    {
+        return 1;
+    }
     firstChild = STX_getFirstChild(node);
     if (STX_getNext(firstChild))
     {
@@ -605,16 +640,45 @@ static int checkNodeCallback(
     else
     {
         // This is not a qualified name.
+        struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
+        struct STX_NodeAttribute *firstChildAttr = STX_getNodeAttribute(firstChild);
+        declarationNode = lookUpSymbol(
+            context,
+            node->scopeId,
+            firstChildAttr->name,
+            firstChildAttr->nameLength
+        );
+
+        if (declarationNode)
+        {
+            nodeAttr->symbolDefinitionNodeId = declarationNode->id;
+        }
+        else
+        {
+            context->currentNode = node;
+            ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
+            return 0;
+        }
     }
+    if (parentNodeType == STX_OPERATOR)
+    {
+        // Check whether the symbol is really an operator.
+        if (declarationNode->nodeType != STX_OPERATOR_FUNCTION)
+        {
+            context->currentNode = node;
+            ERR_raiseError(E_SMC_NOT_AN_OPERATOR);
+            return 0;
+        }
+    }
+
     return 1;
 }
 
 static int checkExpressions(struct SemanticContext *context)
 {
-    return 1;
     struct STX_SyntaxTree *syntaxTree = context->tree;
 
-    STX_transversePreorder(syntaxTree, checkNodeCallback, 0);
+    STX_transversePreorder(syntaxTree, checkNodeCallback, context);
     return 1;
 }
 
@@ -652,7 +716,7 @@ struct SMC_CheckerResult SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree)
     ok = checkRootNode(&sc);
     ascendToParentScope(&sc);
     setScopeIdsOnAllNodes(&sc);
-    checkExpressions(&sc);
+    if (ok) ok = checkExpressions(&sc);
     dumpScopes(&sc);
     result.lastNode = sc.currentNode;
     return result;

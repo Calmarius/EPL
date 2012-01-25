@@ -77,6 +77,13 @@ enum STX_TermType
    STX_TT_ARRAY_SUBSCRIPT
 };
 
+enum STX_PrimitiveTypeType
+{
+    STX_STT_SIGNED_INT,
+    STX_STT_UNSIGNED_INT,
+    STX_STT_FLOAT
+};
+
 /**
  * Stores the attributes of a single node
  */
@@ -96,6 +103,14 @@ struct STX_NodeAttribute
             enum STX_TypePrefix type;
             int elements;
         } typePrefixAttributes;
+        struct
+        {
+            enum STX_PrimitiveTypeType type;
+            int bitCount;
+            const char *attribute;
+            int attributeLength;
+            int isPrimitive;
+        } typeAttributes;
         struct
         {
             enum STX_ParameterDirection direction;
@@ -138,7 +153,7 @@ struct STX_NodeAttribute
     const char *comment;
     int commentLength;
     int symbolTableEntry;
-    struct STX_SyntaxTreeNode *symbolDefinitionNode;
+    int symbolDefinitionNodeId;
 
     struct STX_SyntaxTree *belongsTo;
 
@@ -227,5 +242,7 @@ void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_Sy
 struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator);
 
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
+
+const char * STX_PrimitiveTypeTypeToString(enum STX_PrimitiveTypeType type);
 
 #endif // SYNTAX_H

@@ -277,6 +277,27 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             }
         }
         break;
+        case STX_TYPE:
+        {
+            if (!attribute->typeAttributes.isPrimitive) break;
+            // At this point the type is primitive.
+            ptr += sprintf(
+                ptr,
+                "type = %s bits = %d ",
+                STX_PrimitiveTypeTypeToString(attribute->typeAttributes.type),
+                attribute->typeAttributes.bitCount
+            );
+            if (attribute->typeAttributes.attribute)
+            {
+                ptr += sprintf(
+                    ptr,
+                    "attribute = '%.*s' ",
+                    attribute->typeAttributes.attributeLength,
+                    attribute->typeAttributes.attribute
+                );
+            }
+        }
+        break;
         case STX_OPERATOR_FUNCTION:
         case STX_FUNCTION:
         {
@@ -314,6 +335,14 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
             "name = '%.*s' ",
             attribute->nameLength,
             attribute->name);
+    }
+    if (attribute->symbolDefinitionNodeId >= 0)
+    {
+        ptr += sprintf(
+            ptr,
+            "definer = #%d",
+            attribute->symbolDefinitionNodeId
+        );
     }
     if (attribute->comment)
     {
@@ -593,6 +622,10 @@ void compileFile(const char *fileName, NotificationCallback callback)
         {
             sprintf(buffer, "Block or if statement expected.");
         }
+        else if (ERR_catchError(E_STX_CORRUPT_TOKEN))
+        {
+            sprintf(buffer, "Corrupt token (this error should never happen)");
+        }
         else
         {
             sprintf(buffer, "Unhandled syntax error.\n");
@@ -646,6 +679,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK))
         {
             sprintf(buffer, "Break is not in loop or case block. \n");
+        }
+        else if (ERR_catchError(E_SMC_UNDEFINED_SYMBOL))
+        {
+            sprintf(buffer, "Undefined symbol. \n");
+        }
+        else if (ERR_catchError(E_SMC_NOT_AN_OPERATOR))
+        {
+            sprintf(buffer, "The symbol is used like an operator, but it's not an operator. \n");
         }
 
         callback(buffer);

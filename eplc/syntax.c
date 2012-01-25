@@ -128,6 +128,7 @@ static int allocateAttribute(struct STX_SyntaxTree *tree)
     attribute->allocated = 1;
     attribute->id = tree->attributeCount;
     attribute->belongsTo = tree;
+    attribute->symbolDefinitionNodeId = -1;
     tree->attributeCount++;
     return attribute->id;
 }
@@ -1165,6 +1166,77 @@ static int parseTypePrefix(struct SyntaxContext *context)
 }
 
 /**
+ * This is a helper function for scanBuiltInType
+ */
+static int parseTypeToken(struct STX_NodeAttribute *attribute)
+{
+    const char *str = attribute->name;
+    int remLength = attribute->nameLength;
+    int bitCount = 0;
+
+    if (*str != '$')
+    {
+        ERR_raiseError(E_STX_CORRUPT_TOKEN);
+        return 0;
+    }
+    str++; remLength--; // accept '$'
+    if (!remLength)
+    {
+        ERR_raiseError(E_STX_CORRUPT_TOKEN);
+        return 0;
+    }
+    switch (*str)
+    {
+        case 'i':
+            attribute->typeAttributes.type = STX_STT_SIGNED_INT;
+        break;
+        case 'u':
+            attribute->typeAttributes.type = STX_STT_UNSIGNED_INT;
+        break;
+        case 'f':
+            attribute->typeAttributes.type = STX_STT_FLOAT;
+        break;
+        default:
+            ERR_raiseError(E_STX_CORRUPT_TOKEN);
+            return 0;
+        break;
+    }
+    str++; remLength--; // accept type letter
+    attribute->typeAttributes.bitCount = 0;
+    if (!remLength)
+    {
+        return 1;
+    }
+    for(; remLength; str++, remLength--)
+    {
+        if (*str == '_') break;
+        if (('0' <= *str) && (*str <= '9'))
+        {
+            bitCount *= 10;
+            bitCount += *str - '0';
+        }
+        else
+        {
+            ERR_raiseError(E_STX_CORRUPT_TOKEN);
+            return 0;
+        }
+    }
+    attribute->typeAttributes.bitCount = bitCount;
+    if (remLength)
+    {
+        str++; remLength--; // accept '_'
+        attribute->typeAttributes.attributeLength = remLength;
+        attribute->typeAttributes.attribute = str;
+    }
+    else
+    {
+        attribute->typeAttributes.attributeLength = 0;
+        attribute->typeAttributes.attribute = 0;
+    }
+    return 1;
+}
+
+/**
  * Type ::=
  *     (
  *          <TypePrefix> <Type>
@@ -1175,16 +1247,20 @@ static int parseTypePrefix(struct SyntaxContext *context)
 static int parseType(struct SyntaxContext *context)
 {
     const struct LEX_LexerToken *token;
+    struct STX_NodeAttribute *attr;
 
     descendNewNode(context, STX_TYPE);
     allocateAttributeForCurrent(context);
     token = getCurrentToken(context);
+    attr = getCurrentAttribute(context);
+    attr->typeAttributes.isPrimitive = 0;
 
     if (token->tokenType == LEX_BUILT_IN_TYPE)
     {
-        struct STX_NodeAttribute *attr = getCurrentAttribute(context);
         attr->name = token->start;
         attr->nameLength = token->length;
+        attr->typeAttributes.isPrimitive = 1;
+        if (!parseTypeToken(attr)) return 0;
         acceptCurrent(context);
     }
     else if (token->tokenType == LEX_IDENTIFIER)
@@ -1467,6 +1543,7 @@ static int parseNamespaceDeclaration(struct SyntaxContext *context)
 static int parseQualifiedname(struct SyntaxContext *context)
  {
     descendNewNode(context, STX_QUALIFIED_NAME);
+    allocateAttributeForCurrent(context);
 
     if (getCurrentTokenType(context) == LEX_IDENTIFIER)
     {
@@ -1871,6 +1948,17 @@ const char *STX_nodeTypeToString(enum STX_NodeType nodeType)
         STRINGCASE(STX_PLATFORM_LIST)
 
 
+    }
+    return "<UNKNOWN>";
+}
+
+const char * STX_PrimitiveTypeTypeToString(enum STX_PrimitiveTypeType type)
+{
+    switch (type)
+    {
+        STRINGCASE(STX_STT_FLOAT)
+        STRINGCASE(STX_STT_SIGNED_INT)
+        STRINGCASE(STX_STT_UNSIGNED_INT)
     }
     return "<UNKNOWN>";
 }
