@@ -209,7 +209,9 @@ struct STX_ParserResult
 struct STX_TreeIterator
 {
     struct STX_SyntaxTreeNode *current;
+    struct STX_SyntaxTreeNode *iteratorRoot;
     struct STX_SyntaxTreeNode *previous;
+    int isSkipSubTree;
 };
 
 struct STX_ParserResult STX_buildSyntaxTree(
@@ -240,6 +242,10 @@ struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node);
 void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node);
 
 struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator);
+
+struct STX_SyntaxTreeNode *STX_getNextPostorder(struct STX_TreeIterator *iterator);
+
+void STX_setSkipSubtree(struct STX_TreeIterator *iterator, int skip);
 
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 

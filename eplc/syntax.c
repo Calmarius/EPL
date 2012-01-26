@@ -1991,20 +1991,73 @@ struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node)
 
 void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node)
 {
-    iterator->current = node;
+    iterator->current = 0;
     iterator->previous = 0;
+    iterator->iteratorRoot = node;
+}
+
+struct STX_SyntaxTreeNode *STX_getNextPostorder(struct STX_TreeIterator *iterator)
+{
+    struct STX_SyntaxTreeNode *next;
+
+    if (!iterator->current)
+    {
+        // This is the first iteration, go down to the leftmost leaf.
+        next = iterator->iteratorRoot;
+        while (STX_getFirstChild(next))
+        {
+            next = STX_getFirstChild(next);
+        }
+        iterator->current = next;
+        return next;
+    }
+    // At this point this is not the first loop.
+    if (iterator->iteratorRoot == iterator->current)
+    {
+        // We are at the iterator root. We are ready.
+        return 0;
+    }
+    iterator->previous = iterator->current;
+    next = STX_getNext(iterator->current);
+    if (next)
+    {
+        // Next sibling exists, go down to it's first leaf
+        while (STX_getFirstChild(next))
+        {
+            next = STX_getFirstChild(next);
+        }
+        iterator->current = next;
+        return next;
+    }
+    else
+    {
+        // No next sibling the next is the parent node.
+        next = STX_getParentNode(iterator->current);
+        iterator->current = next;
+        return next;
+    }
 }
 
 struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator)
 {
-    struct STX_SyntaxTreeNode *nextNode = STX_getFirstChild(iterator->current);
+    struct STX_SyntaxTreeNode *nextNode;
     struct STX_SyntaxTreeNode *parentNode;
 
+    if (!iterator->current)
+    {
+        // In the first loop transverse the iterator root.
+        iterator->current = iterator->iteratorRoot;
+        iterator->isSkipSubTree = 0;
+        return iterator->iteratorRoot;
+    }
+
+    nextNode = STX_getFirstChild(iterator->current);
     iterator->previous = iterator->current;
-    if (nextNode)
+    if (nextNode && !iterator->isSkipSubTree)
     {
         // Current node has child nodes
         iterator->current = nextNode;
+        iterator->isSkipSubTree = 0;
         return nextNode;
     }
     else
@@ -2018,11 +2071,19 @@ struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator
             if (nextNode)
             {
                 iterator->current = nextNode;
+                iterator->isSkipSubTree = 0;
                 return nextNode;
             }
             parentNode = STX_getParentNode(parentNode);
         }
+        iterator->isSkipSubTree = 0;
         return 0;
     }
 }
+
+void STX_setSkipSubtree(struct STX_TreeIterator *iterator, int skip)
+{
+    iterator->isSkipSubTree = skip;
+}
+
 

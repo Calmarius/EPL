@@ -591,8 +591,12 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     int varNameLength
 )
 {
-    struct Scope *scope = context->scopePointers[startScopeId];
-    struct STX_SyntaxTreeNode *node = ASSOC_find(scope->symbols, varName, varNameLength);
+    struct Scope *scope;
+    struct STX_SyntaxTreeNode *node;
+
+    assert(startScopeId >= 0);
+    scope = context->scopePointers[startScopeId];
+    node = ASSOC_find(scope->symbols, varName, varNameLength);
     if (node)
     {
         // symbol found, return it.
@@ -609,15 +613,13 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     return 0;
 }
 
-static int checkNodeCallback(
-    struct STX_SyntaxTreeNode *node,
-    int level,
-    void *userData
+static int checkQualifiedName(
+    struct SemanticContext *context,
+    struct STX_SyntaxTreeNode *node
 )
 {
     struct STX_SyntaxTreeNode *parentNode;
     struct STX_SyntaxTreeNode *firstChild;
-    struct SemanticContext *context = userData;
     struct STX_SyntaxTreeNode *declarationNode;
     enum STX_NodeType parentNodeType;
 
@@ -674,11 +676,46 @@ static int checkNodeCallback(
     return 1;
 }
 
+static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTreeNode *current)
+{
+    struct STX_TreeIterator iterator;
+
+    STX_initializeTreeIterator(&iterator, current);
+    for(
+        current = STX_getNextPostorder(&iterator);
+        current;
+        current = STX_getNextPostorder(&iterator)
+    )
+    {
+        if (current->nodeType == STX_QUALIFIED_NAME)
+        {
+            if (!checkQualifiedName(context, current)) return 0;
+        }
+    }
+    return 1;
+}
+
 static int checkExpressions(struct SemanticContext *context)
 {
-    struct STX_SyntaxTree *syntaxTree = context->tree;
+    struct STX_TreeIterator iterator;
+    struct STX_SyntaxTreeNode *current = STX_getRootNode(context->tree);
+    for (
+        STX_initializeTreeIterator(&iterator, current);
+        current;
+        current = STX_getNextPreorder(&iterator)
+    )
+    {
+        switch (current->nodeType)
+        {
+            case STX_EXPRESSION:
+                STX_setSkipSubtree(&iterator, 1);
+                if (!checkExpression(context, current)) return 0;
+            break;
+            default:
+            break;
+        }
+    }
 
-    STX_transversePreorder(syntaxTree, checkNodeCallback, context);
     return 1;
 }
 
@@ -686,9 +723,10 @@ static void setScopeIdsOnAllNodes(struct SemanticContext *context)
 {
     struct STX_TreeIterator iterator;
     struct STX_SyntaxTreeNode *current = STX_getRootNode(context->tree);
+    STX_initializeTreeIterator(&iterator, current);
 
     for (
-        STX_initializeTreeIterator(&iterator, current);
+        current = STX_getNextPreorder(&iterator);
         current;
         current = STX_getNextPreorder(&iterator)
     )
