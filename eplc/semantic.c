@@ -23,6 +23,7 @@ struct SemanticContext
     struct STX_SyntaxTreeNode *currentNode;
 
     struct Scope *currentScope;
+    struct Scope *rootScope;
 
     struct Scope **scopePointers;
     int scopePointersAllocated;
@@ -80,6 +81,7 @@ static enum STX_NodeType getCurrentNodeType(struct SemanticContext *context)
 static void descendNewScope(struct SemanticContext *context)
 {
     context->currentScope = allocateScope(context, context->currentScope);
+    context->currentNode->definesScopeId = context->currentScope->id;
     context->currentScope->node = getCurrentNode(context);
 }
 
@@ -170,7 +172,7 @@ static int enterCurrentNode(struct SemanticContext *context, int needError)
         return 0;
     }
     context->currentNode = &context->currentNode->belongsTo->nodes[context->currentNode->firstChildIndex];
-    context->currentNode->scopeId = context->currentScope->id;
+    context->currentNode->inScopeId = context->currentScope->id;
 
     return 1;
 }
@@ -196,7 +198,7 @@ static int moveToNextNode(struct SemanticContext *context, int needError)
         return 0;
     }
     context->currentNode = &context->tree->nodes[context->currentNode->nextSiblingIndex];
-    context->currentNode->scopeId = context->currentScope->id;
+    context->currentNode->inScopeId = context->currentScope->id;
     return 1;
 }
 
@@ -253,8 +255,8 @@ static int checkParameterList(
 
 static int checkBlock(struct SemanticContext *context)
 {
-    if (!assertNodeType(context, STX_BLOCK)) return 0;
     descendNewScope(context);
+    if (!assertNodeType(context, STX_BLOCK)) return 0;
     if (enterCurrentNode(context, 0))
     {
         do
@@ -524,6 +526,23 @@ static int checkForPlatformDeclaration(struct SemanticContext *context)
     return 1;
 }
 
+static int checkNamespace(struct SemanticContext *context)
+{
+    if (!assertNodeType(context, STX_NAMESPACE)) return 0;
+    descendNewScope(context);
+    if (!enterCurrentNode(context, 1)) return 1;
+    {
+        do
+        {
+            if (!checkDeclaration(context)) return 0;
+        }
+        while (moveToNextNode(context, 0));
+    }
+    ascendToParentScope(context);
+    leaveCurrentNode(context);
+    return 1;
+}
+
 static int checkDeclaration(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -541,6 +560,10 @@ static int checkDeclaration(struct SemanticContext *context)
         break;
         case STX_FOR_PLATFORMS:
             if (!checkForPlatformDeclaration(context)) return 0;
+        break;
+        case STX_NAMESPACE:
+            if (!addSymbolToCurrentScope(context)) return 0;
+            if (!checkNamespace(context)) return 0;
         break;
         default:
             ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
@@ -588,7 +611,8 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     struct SemanticContext *context,
     int startScopeId,
     const char *varName,
-    int varNameLength
+    int varNameLength,
+    int checkParentScopes
 )
 {
     struct Scope *scope;
@@ -605,9 +629,15 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     else
     {
         // try the parent scope if any.
-        if (scope->parentScope)
+        if (scope->parentScope && checkParentScopes)
         {
-            return lookUpSymbol(context, scope->parentScope->id, varName, varNameLength);
+            return lookUpSymbol(
+                context,
+                scope->parentScope->id,
+                varName,
+                varNameLength,
+                checkParentScopes
+            );
         }
     }
     return 0;
@@ -622,6 +652,7 @@ static int checkQualifiedName(
     struct STX_SyntaxTreeNode *firstChild;
     struct STX_SyntaxTreeNode *declarationNode;
     enum STX_NodeType parentNodeType;
+    struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
 
     if (node->nodeType != STX_QUALIFIED_NAME) return 1;
     parentNode = STX_getParentNode(node);
@@ -638,29 +669,74 @@ static int checkQualifiedName(
     if (STX_getNext(firstChild))
     {
         // This is a fully qualified name.
+        struct STX_SyntaxTreeNode *currentChild = firstChild;
+        struct Scope *currentScope = context->rootScope;
+        struct STX_SyntaxTreeNode *currentNameSpace = 0;
+        struct STX_NodeAttribute *currentAttribute;
+
+        while (STX_getNext(currentChild))
+        {
+            currentAttribute = STX_getNodeAttribute(currentChild);
+            currentNameSpace = lookUpSymbol(
+                context,
+                currentScope->id,
+                currentAttribute->name,
+                currentAttribute->nameLength,
+                0
+            );
+            if (currentNameSpace)
+            {
+                if (currentNameSpace->nodeType != STX_NAMESPACE)
+                {
+                    context->currentNode = currentChild;
+                    ERR_raiseError(E_SMC_NOT_A_NAMESPACE);
+                    return 0;
+                }
+                // So this is a namespace set it's scope as current.
+                currentScope = context->scopePointers[currentNameSpace->definesScopeId];
+                // Go to the next child.
+                currentChild = STX_getNext(currentChild);
+            }
+            else
+            {
+                context->currentNode = currentChild;
+                ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
+                return 0;
+            }
+        }
+        // currentChild is the last child.
+        // Look it up.
+        currentAttribute = STX_getNodeAttribute(currentChild);
+        declarationNode = lookUpSymbol(
+            context,
+            currentScope->id,
+            currentAttribute->name,
+            currentAttribute->nameLength,
+            0
+        );
     }
     else
     {
         // This is not a qualified name.
-        struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
         struct STX_NodeAttribute *firstChildAttr = STX_getNodeAttribute(firstChild);
         declarationNode = lookUpSymbol(
             context,
-            node->scopeId,
+            node->inScopeId,
             firstChildAttr->name,
-            firstChildAttr->nameLength
+            firstChildAttr->nameLength,
+            1
         );
-
-        if (declarationNode)
-        {
-            nodeAttr->symbolDefinitionNodeId = declarationNode->id;
-        }
-        else
-        {
-            context->currentNode = node;
-            ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
-            return 0;
-        }
+    }
+    // Check if the symbol found.
+    if (declarationNode)
+    {
+        nodeAttr->symbolDefinitionNodeId = declarationNode->id;
+    }
+    else
+    {
+        context->currentNode = node;
+        ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
+        return 0;
     }
     if (parentNodeType == STX_OPERATOR)
     {
@@ -734,9 +810,9 @@ static void setScopeIdsOnAllNodes(struct SemanticContext *context)
         struct STX_SyntaxTreeNode *parent = STX_getParentNode(current);
         if (parent)
         {
-            if (current->scopeId < 0)
+            if (current->inScopeId < 0)
             {
-                current->scopeId = parent->scopeId;
+                current->inScopeId = parent->inScopeId;
             }
         }
     }
@@ -751,6 +827,7 @@ struct SMC_CheckerResult SMC_checkSyntaxTree(struct STX_SyntaxTree *syntaxTree)
     sc.tree = syntaxTree;
     sc.currentNode = STX_getRootNode(syntaxTree);
     descendNewScope(&sc);
+    sc.rootScope = sc.currentScope;
     ok = checkRootNode(&sc);
     ascendToParentScope(&sc);
     setScopeIdsOnAllNodes(&sc);

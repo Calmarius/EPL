@@ -361,7 +361,7 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
     FILE *f = (FILE *)userData;
     fprintf(
         f,
-        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d => {%d}]\n",
+        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d => {in: %d, defines: %d}]\n",
         level*4,
         "",
         STX_nodeTypeToString(node->nodeType),
@@ -375,7 +375,8 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
         node->lastChildIndex,
         node->previousSiblingIndex,
         node->nextSiblingIndex,
-        node->scopeId);
+        node->inScopeId,
+        node->definesScopeId);
     return 1;
 }
 
@@ -687,6 +688,10 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_SMC_NOT_AN_OPERATOR))
         {
             sprintf(buffer, "The symbol is used like an operator, but it's not an operator. \n");
+        }
+        else if (ERR_catchError(E_SMC_NOT_A_NAMESPACE))
+        {
+            sprintf(buffer, "The symbol is not a namespace. \n");
         }
 
         callback(buffer);

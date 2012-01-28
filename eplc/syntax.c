@@ -99,7 +99,8 @@ static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
             tree->nodes, tree->nodesAllocated * sizeof(struct STX_SyntaxTreeNode));
     }
     node = &tree->nodes[tree->nodeCount];
-    node->scopeId = -1;
+    node->inScopeId = -1;
+    node->definesScopeId = -1;
     node->allocated = 1;
     node->id = tree->nodeCount;
     node->belongsTo = tree;
@@ -389,7 +390,7 @@ static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *conte
     return &context->tree->attributes[context->currentAttributeIndex];
 }
 
-static int parseQualifiedname(struct SyntaxContext *context);
+static int parseQualifiedName(struct SyntaxContext *context);
 
 /**
  * <Term> ::=
@@ -429,7 +430,7 @@ static int parseTerm(struct SyntaxContext *context)
     }
     else if (token->tokenType == LEX_IDENTIFIER)
     {
-        if (!parseQualifiedname(context)) return 0;
+        if (!parseQualifiedName(context)) return 0;
         /*attribute = getCurrentAttribute(context);
         attribute->termAttributes.termType = STX_TT_SIMPLE;
         attribute->termAttributes.tokenType = context->current->tokenType;
@@ -698,7 +699,7 @@ static int parseExpression(struct SyntaxContext *context)
         {
             if (token->tokenType == LEX_IDENTIFIER)
             {
-                if (!parseQualifiedname(context)) return 0;
+                if (!parseQualifiedName(context)) return 0;
             }
             else
             {
@@ -1265,7 +1266,7 @@ static int parseType(struct SyntaxContext *context)
     }
     else if (token->tokenType == LEX_IDENTIFIER)
     {
-        if (!parseQualifiedname(context)) return 0;
+        if (!parseQualifiedName(context)) return 0;
     }
     else
     {
@@ -1540,22 +1541,28 @@ static int parseNamespaceDeclaration(struct SyntaxContext *context)
  * identifier ( '::' identifier)*
  */
 
-static int parseQualifiedname(struct SyntaxContext *context)
+static int parseQualifiedName(struct SyntaxContext *context)
  {
     descendNewNode(context, STX_QUALIFIED_NAME);
     allocateAttributeForCurrent(context);
+    struct STX_NodeAttribute *attribute;
+    const char *startPos;
+    const char *lastTokenPos;
+    int lastTokenLength;
 
     if (getCurrentTokenType(context) == LEX_IDENTIFIER)
     {
         const struct LEX_LexerToken *current = getCurrentToken(context);
-        struct STX_NodeAttribute *attribute;
         descendNewNode(context, STX_QUALIFIED_NAME_PART);
         allocateAttributeForCurrent(context);
         attribute = getCurrentAttribute(context);
+        lastTokenPos =
+        startPos =
         attribute->name = current->start;
+        lastTokenLength =
         attribute->nameLength = current->length;
-        ascendToParent(context);
         acceptCurrent(context);
+        ascendToParent(context);
     }
     else
     {
@@ -1568,14 +1575,15 @@ static int parseQualifiedname(struct SyntaxContext *context)
         if (getCurrentTokenType(context) == LEX_IDENTIFIER)
         {
             const struct LEX_LexerToken *current = getCurrentToken(context);
-            struct STX_NodeAttribute *attribute;
             descendNewNode(context, STX_QUALIFIED_NAME_PART);
             allocateAttributeForCurrent(context);
             attribute = getCurrentAttribute(context);
             attribute->name = current->start;
             attribute->nameLength = current->length;
-            ascendToParent(context);
+            lastTokenPos = current->start;
+            lastTokenLength = current->length;
             acceptCurrent(context);
+            ascendToParent(context);
         }
         else
         {
@@ -1583,6 +1591,11 @@ static int parseQualifiedname(struct SyntaxContext *context)
             return 0;
         }
     }
+    // assign the complete name to the qualified name node.
+
+    attribute = getCurrentAttribute(context);
+    attribute->name = startPos;
+    attribute->nameLength = (size_t)(lastTokenPos + lastTokenLength) - (size_t)(startPos);
 
     ascendToParent(context);
     return 1;
@@ -1598,7 +1611,7 @@ static int parseUsingDeclaration(struct SyntaxContext *context)
     descendNewNode(context, STX_USING);
 
     if (!expect(context, LEX_KW_USING, E_STX_USING_EXPECTED)) return 0;
-    if (!parseQualifiedname(context)) return 0;
+    if (!parseQualifiedName(context)) return 0;
     if (!expect(context, LEX_SEMICOLON, E_STX_SEMICOLON_EXPECTED)) return 0;
 
     ascendToParent(context);

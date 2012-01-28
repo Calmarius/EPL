@@ -66,6 +66,7 @@ enum ERR_ErrorCode
     E_SMC_CONTINUE_IS_NOT_IN_LOOP_OR_CASE_BLOCK,
     E_SMC_UNDEFINED_SYMBOL,
     E_SMC_NOT_AN_OPERATOR,
+    E_SMC_NOT_A_NAMESPACE,
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);

@@ -178,7 +178,8 @@ struct STX_SyntaxTreeNode
     enum STX_NodeType nodeType;
     int allocated;
     struct STX_SyntaxTree *belongsTo;
-    int scopeId;
+    int inScopeId;
+    int definesScopeId;
 };
 
 /**
