@@ -15,6 +15,10 @@ struct Scope
     /// The node of the symbol that created the scope.
     struct STX_SyntaxTreeNode *node;
     int id;
+
+    struct STX_SyntaxTreeNode **usedNamespaces;
+    int usedNameSpacesAllocated;
+    int usedNameSpaceCount;
 };
 
 struct SemanticContext
@@ -33,8 +37,17 @@ struct SemanticContext
     int currentScopeId;
 };
 
+#define SLO_LOCAL_ONLY 0
+#define SLO_CHECK_PARENT_SCOPES 1
+#define SLO_CHECK_USED_NAMESPACES 2
+
 static int checkStatement(struct SemanticContext *context);
 static int checkDeclaration(struct SemanticContext *context);
+static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
+    struct SemanticContext *context,
+    struct STX_SyntaxTreeNode *node
+);
+
 
 static struct Scope *allocateScope(
     struct SemanticContext *context,
@@ -543,6 +556,66 @@ static int checkNamespace(struct SemanticContext *context)
     return 1;
 }
 
+static int addNodeToUsedNamespaces(
+    struct SemanticContext *context,
+    struct STX_SyntaxTreeNode *node
+)
+{
+    struct Scope *scope = context->currentScope;
+
+    if (node->nodeType != STX_NAMESPACE)
+    {
+        ERR_raiseError(E_SMC_NOT_A_NAMESPACE);
+        return 0;
+    }
+
+    if (scope->usedNameSpacesAllocated == scope->usedNameSpaceCount)
+    {
+        if (!scope->usedNameSpacesAllocated)
+        {
+            scope->usedNameSpacesAllocated = 5;
+        }
+        else
+        {
+            scope->usedNameSpacesAllocated <<= 1;
+        }
+
+        scope->usedNamespaces = realloc(
+            scope->usedNamespaces,
+            scope->usedNameSpacesAllocated * sizeof(*scope)
+        );
+    }
+
+    scope->usedNamespaces[scope->usedNameSpaceCount++] = node;
+
+    return 1;
+}
+
+static int checkUsingDeclaration(struct SemanticContext *context)
+{
+    struct STX_SyntaxTreeNode *declarationNode;
+
+    if (!assertNodeType(context, STX_USING)) return 0;
+    if (!enterCurrentNode(context, 1)) return 0;
+
+    declarationNode = findSymbolDeclarationFromFullyQualifiedName(
+        context,
+        context->currentNode
+    );
+
+    if (!declarationNode)
+    {
+        if (ERR_isError()) return 0;
+        ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
+        return 0;
+    }
+
+    if (!addNodeToUsedNamespaces(context, declarationNode)) return 0;
+
+    leaveCurrentNode(context);
+    return 1;
+}
+
 static int checkDeclaration(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -564,6 +637,9 @@ static int checkDeclaration(struct SemanticContext *context)
         case STX_NAMESPACE:
             if (!addSymbolToCurrentScope(context)) return 0;
             if (!checkNamespace(context)) return 0;
+        break;
+        case STX_USING:
+            if (!checkUsingDeclaration(context)) return 0;
         break;
         default:
             ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
@@ -612,7 +688,7 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     int startScopeId,
     const char *varName,
     int varNameLength,
-    int checkParentScopes
+    int lookupOptions
 )
 {
     struct Scope *scope;
@@ -628,19 +704,112 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     }
     else
     {
-        // try the parent scope if any.
-        if (scope->parentScope && checkParentScopes)
+        // symbol not found check used namespaces
+        int i;
+        int foundCount = 0;
+        struct STX_SyntaxTreeNode *foundNode = 0;
+        if (lookupOptions & SLO_CHECK_USED_NAMESPACES)
+        {
+            for (i = 0; i < scope->usedNameSpaceCount; i++ )
+            {
+                // Check all used namespaces for ambiguity.
+                struct STX_SyntaxTreeNode *namespaceNode = scope->usedNamespaces[i];
+                foundNode = lookUpSymbol(
+                    context,
+                    namespaceNode->definesScopeId,
+                    varName,
+                    varNameLength,
+                    0
+                );
+                foundCount++;
+                if (foundCount > 1)
+                {
+                    ERR_raiseError(E_SMC_AMBIGUOS_NAME);
+                    return 0;
+                }
+            }
+        }
+        if (foundNode)
+        {
+            return foundNode;
+        }
+
+        // try the parent scope if any and flag is set.
+        if (scope->parentScope && (lookupOptions & SLO_CHECK_PARENT_SCOPES))
         {
             return lookUpSymbol(
                 context,
                 scope->parentScope->id,
                 varName,
                 varNameLength,
-                checkParentScopes
+                lookupOptions
             );
         }
     }
     return 0;
+}
+
+static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
+    struct SemanticContext *context,
+    struct STX_SyntaxTreeNode *node
+)
+{
+    struct STX_SyntaxTreeNode *currentChild;
+    struct Scope *currentScope = context->rootScope;
+    struct STX_SyntaxTreeNode *currentNameSpace = 0;
+    struct STX_SyntaxTreeNode *declarationNode = 0;
+    struct STX_NodeAttribute *currentAttribute;
+
+    assert(node);
+    if (node->nodeType != STX_QUALIFIED_NAME)
+    {
+        ERR_raiseError(E_SMC_CORRUPT_SYNTAX_TREE);
+        return 0;
+    }
+
+    currentChild = STX_getFirstChild(node);
+
+    while (STX_getNext(currentChild))
+    {
+        currentAttribute = STX_getNodeAttribute(currentChild);
+        currentNameSpace = lookUpSymbol(
+            context,
+            currentScope->id,
+            currentAttribute->name,
+            currentAttribute->nameLength,
+            0
+        );
+        if (currentNameSpace)
+        {
+            if (currentNameSpace->nodeType != STX_NAMESPACE)
+            {
+                context->currentNode = currentChild;
+                ERR_raiseError(E_SMC_NOT_A_NAMESPACE);
+                return 0;
+            }
+            // So this is a namespace set it's scope as current.
+            currentScope = context->scopePointers[currentNameSpace->definesScopeId];
+            // Go to the next child.
+            currentChild = STX_getNext(currentChild);
+        }
+        else
+        {
+            context->currentNode = currentChild;
+            ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
+            return 0;
+        }
+    }
+    // currentChild is the last child.
+    // Look it up.
+    currentAttribute = STX_getNodeAttribute(currentChild);
+    declarationNode = lookUpSymbol(
+        context,
+        currentScope->id,
+        currentAttribute->name,
+        currentAttribute->nameLength,
+        0
+    );
+    return declarationNode;
 }
 
 static int checkQualifiedName(
@@ -669,63 +838,30 @@ static int checkQualifiedName(
     if (STX_getNext(firstChild))
     {
         // This is a fully qualified name.
-        struct STX_SyntaxTreeNode *currentChild = firstChild;
-        struct Scope *currentScope = context->rootScope;
-        struct STX_SyntaxTreeNode *currentNameSpace = 0;
-        struct STX_NodeAttribute *currentAttribute;
-
-        while (STX_getNext(currentChild))
-        {
-            currentAttribute = STX_getNodeAttribute(currentChild);
-            currentNameSpace = lookUpSymbol(
-                context,
-                currentScope->id,
-                currentAttribute->name,
-                currentAttribute->nameLength,
-                0
-            );
-            if (currentNameSpace)
-            {
-                if (currentNameSpace->nodeType != STX_NAMESPACE)
-                {
-                    context->currentNode = currentChild;
-                    ERR_raiseError(E_SMC_NOT_A_NAMESPACE);
-                    return 0;
-                }
-                // So this is a namespace set it's scope as current.
-                currentScope = context->scopePointers[currentNameSpace->definesScopeId];
-                // Go to the next child.
-                currentChild = STX_getNext(currentChild);
-            }
-            else
-            {
-                context->currentNode = currentChild;
-                ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
-                return 0;
-            }
-        }
-        // currentChild is the last child.
-        // Look it up.
-        currentAttribute = STX_getNodeAttribute(currentChild);
-        declarationNode = lookUpSymbol(
-            context,
-            currentScope->id,
-            currentAttribute->name,
-            currentAttribute->nameLength,
-            0
-        );
+        declarationNode = findSymbolDeclarationFromFullyQualifiedName(context, node);
     }
     else
     {
         // This is not a qualified name.
         struct STX_NodeAttribute *firstChildAttr = STX_getNodeAttribute(firstChild);
+
         declarationNode = lookUpSymbol(
             context,
             node->inScopeId,
             firstChildAttr->name,
             firstChildAttr->nameLength,
-            1
+            SLO_CHECK_PARENT_SCOPES | SLO_CHECK_USED_NAMESPACES
         );
+
+        if (!declarationNode)
+        {
+            // Either symbol is not found, or error happened.
+            if (ERR_isError())
+            {
+                context->currentNode = node;
+                return 0;
+            }
+        }
     }
     // Check if the symbol found.
     if (declarationNode)

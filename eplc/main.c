@@ -361,7 +361,8 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
     FILE *f = (FILE *)userData;
     fprintf(
         f,
-        "%*s %s %s (%d:%d) - (%d:%d) [#%d, %d - %d, <= %d  %d => {in: %d, defines: %d}]\n",
+        "#%d %*s %s %s (%d:%d) - (%d:%d) [%d - %d, <= %d  %d => {in: %d, defines: %d}]\n",
+        node->id,
         level*4,
         "",
         STX_nodeTypeToString(node->nodeType),
@@ -370,7 +371,6 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
         node->beginColumn,
         node->endLine,
         node->endColumn,
-        node->id,
         node->firstChildIndex,
         node->lastChildIndex,
         node->previousSiblingIndex,
@@ -692,6 +692,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_SMC_NOT_A_NAMESPACE))
         {
             sprintf(buffer, "The symbol is not a namespace. \n");
+        }
+        else if (ERR_catchError(E_SMC_AMBIGUOS_NAME))
+        {
+            sprintf(buffer, "Ambiguous symbol name. \n");
+        }
+        else
+        {
+            sprintf(buffer, "Unknown error. \n");
         }
 
         callback(buffer);

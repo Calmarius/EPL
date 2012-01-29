@@ -67,6 +67,7 @@ enum ERR_ErrorCode
     E_SMC_UNDEFINED_SYMBOL,
     E_SMC_NOT_AN_OPERATOR,
     E_SMC_NOT_A_NAMESPACE,
+    E_SMC_AMBIGUOS_NAME,
 };
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode);
