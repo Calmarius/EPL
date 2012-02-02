@@ -62,7 +62,13 @@ static void initializeSyntaxTree(struct STX_SyntaxTree *tree)
     node->nodeType = STX_ROOT;
 }
 
-static void appendChild(
+void STX_removeAllChildren(struct STX_SyntaxTreeNode *node)
+{
+    node->firstChildIndex = -1;
+    node->lastChildIndex = -1;
+}
+
+void STX_appendChild(
     struct STX_SyntaxTree *tree,
     struct STX_SyntaxTreeNode *node,
     struct STX_SyntaxTreeNode *child)
@@ -142,6 +148,10 @@ static void initializeNode(struct STX_SyntaxTreeNode *node)
     node->nextSiblingIndex = -1;
     node->previousSiblingIndex = -1;
     node->attributeIndex = -1;
+    node->beginColumn = 0;
+    node->beginLine = 0;
+    node->endColumn = 0;
+    node->endLine = 0;
 }
 
 static const struct LEX_LexerToken *getCurrentToken(struct SyntaxContext *context)
@@ -304,7 +314,7 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
     node->nodeType = type;
     node->beginColumn = token->beginColumn;
     node->beginLine = token->beginLine;
-    appendChild(context->tree, getCurrentNode(context), node);
+    STX_appendChild(context->tree, getCurrentNode(context), node);
     context->currentNodeIndex = node->id;
     if (context->latestComment)
     {
@@ -575,7 +585,7 @@ struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *
     return -100;
 }*/
 
-/*static void removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
+void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
 {
 
     if (node->previousSiblingIndex >= 0)
@@ -594,7 +604,7 @@ struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *
     {
         tree->nodes[node->parentIndex].lastChildIndex = node->previousSiblingIndex;
     }
-}*/
+}
 
 /*static void organizeExpressionTree(struct SyntaxContext *context)
 {
@@ -2000,6 +2010,12 @@ struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node)
 {
     if (node->nextSiblingIndex < 0) return 0;
     return &node->belongsTo->nodes[node->nextSiblingIndex];
+}
+
+struct STX_SyntaxTreeNode *STX_getPrevious(const struct STX_SyntaxTreeNode *node)
+{
+    if (node->previousSiblingIndex < 0) return 0;
+    return &node->belongsTo->nodes[node->previousSiblingIndex];
 }
 
 void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node)

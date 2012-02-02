@@ -37,6 +37,14 @@ struct SemanticContext
     int currentScopeId;
 };
 
+enum PrecedenceLevel
+{
+    PREC_RELATIONAL,
+    PREC_ADDITIVE,
+    PREC_MULTIPLICATIVE,
+    PREC_ACCESSOR
+};
+
 #define SLO_LOCAL_ONLY 0
 #define SLO_CHECK_PARENT_SCOPES 1
 #define SLO_CHECK_USED_NAMESPACES 2
@@ -888,6 +896,190 @@ static int checkQualifiedName(
     return 1;
 }
 
+static int checkTerm(
+    struct SemanticContext *context,
+    struct STX_SyntaxTreeNode *node
+)
+{
+    return 1;
+}
+
+static void push(void **stack, void *data, int *ptr, int *size)
+{
+    if (*ptr == *size)
+    {
+        *size *= 2;
+        stack = realloc(stack, *size * sizeof(void*));
+    }
+    stack[(*ptr)++] = data;
+}
+
+static void *pop(void **stack, int *ptr)
+{
+    if (!*ptr) return 0;
+    return stack[--(*ptr)];
+}
+
+static void *peek(void **stack, int ptr)
+{
+    if (!ptr) return 0;
+    return stack[ptr - 1];
+}
+
+static enum PrecedenceLevel getPrecedenceLevel(struct STX_SyntaxTreeNode *operatorNode)
+{
+    struct STX_NodeAttribute *attr;
+
+    assert(operatorNode);
+    attr = STX_getNodeAttribute(operatorNode);
+    if (STX_getFirstChild(operatorNode))
+    {
+        // This is a composite operator.
+        switch (attr->functionAttributes.precedence)
+        {
+            case LEX_KW_ADDITIVE: return PREC_ADDITIVE;
+            case LEX_KW_MULTIPLICATIVE: return PREC_MULTIPLICATIVE;
+            case LEX_KW_RELATIONAL: return PREC_RELATIONAL;
+            default:
+                assert(0);
+            break;
+        }
+    }
+    else
+    {
+        // This is a simple operator
+        switch (attr->operatorAttributes.type)
+        {
+            case LEX_ADD_OPERATOR:
+            case LEX_SUBTRACT_OPERATOR:
+                return PREC_ADDITIVE;
+            case LEX_SHIFT_LEFT:
+            case LEX_SHIFT_RIGHT:
+            case LEX_DIVISION_OPERATOR:
+            case LEX_MULTIPLY_OPERATOR:
+                return PREC_MULTIPLICATIVE;
+            case LEX_LESS_EQUAL_THAN:
+            case LEX_LESS_THAN:
+            case LEX_GREATER_EQUAL_THAN:
+            case LEX_GREATER_THAN:
+            case LEX_NOT_EQUAL:
+            case LEX_EQUAL:
+                return PREC_RELATIONAL;
+            case LEX_PERIOD:
+                return PREC_ACCESSOR;
+            default:
+                assert(0);
+            break;
+        }
+    }
+}
+
+static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *expressionNode)
+{
+    struct STX_SyntaxTreeNode **operatorStack;
+    int operatorPtr = 0;
+    int operatorStackSize = 20;
+
+    struct STX_SyntaxTreeNode **result;
+    int resultPtr = 0;
+    int resultSize = 20;
+
+    struct STX_SyntaxTreeNode *currentNode;
+
+    operatorStack = malloc(operatorStackSize * sizeof(struct STX_SyntaxTreeNode *));
+    result = malloc(resultSize * sizeof(struct STX_SyntaxTreeNode *));
+
+    for
+    (
+        currentNode = STX_getFirstChild(expressionNode);
+        currentNode;
+        currentNode = STX_getNext(currentNode)
+    )
+    {
+        enum STX_NodeType type = currentNode->nodeType;
+        switch (type)
+        {
+            case STX_TERM:
+                push((void**)result, currentNode, &resultPtr, &resultSize);
+            break;
+            case STX_OPERATOR:
+            {
+                for(;;)
+                {
+                    struct STX_SyntaxTreeNode *top = peek((void**)operatorStack, operatorPtr);
+                    if (top)
+                    {
+                        if (getPrecedenceLevel(currentNode) < getPrecedenceLevel(top))
+                        {
+                            push((void**)result, top, &resultPtr, &resultSize);
+                            pop((void**)operatorStack, &operatorPtr);
+                        }
+                        else
+                            break;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                push((void**)operatorStack, currentNode, &operatorPtr, &operatorStackSize);
+            }
+            break;
+            default:
+            break;
+        }
+    }
+    // Flush operand stack
+    for(;;)
+    {
+        struct STX_SyntaxTreeNode *top = peek((void**)operatorStack, operatorPtr);
+        if (top)
+        {
+            push((void**)result, top, &resultPtr, &resultSize);
+            pop((void**)operatorStack, &operatorPtr);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+
+    STX_removeAllChildren(expressionNode);
+    {
+        int i;
+        for (i = 0; i < resultPtr; i++)
+        {
+            struct STX_SyntaxTreeNode *current = result[i];
+
+            switch (current->nodeType)
+            {
+                case STX_TERM:
+                    STX_appendChild(tree, expressionNode, current);
+                break;
+                case STX_OPERATOR:
+                {
+                    struct STX_SyntaxTreeNode *operand2 = STX_getLastChild(expressionNode);
+                    struct STX_SyntaxTreeNode *operand1 = STX_getPrevious(operand2);
+                    STX_appendChild(tree, expressionNode, current);
+                    STX_removeNode(tree, operand1);
+                    STX_removeNode(tree, operand2);
+                    STX_appendChild(tree, current, operand1);
+                    STX_appendChild(tree, current, operand2);
+                }
+                break;
+                default:
+                    assert(0);
+                break;
+            }
+        }
+    }
+
+//cleanup:
+    free(operatorStack);
+    free(result);
+}
+
 static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTreeNode *current)
 {
     struct STX_TreeIterator iterator;
@@ -899,9 +1091,19 @@ static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTre
         current = STX_getNextPostorder(&iterator)
     )
     {
-        if (current->nodeType == STX_QUALIFIED_NAME)
+        switch (current->nodeType)
         {
-            if (!checkQualifiedName(context, current)) return 0;
+            case STX_QUALIFIED_NAME:
+                if (!checkQualifiedName(context, current)) return 0;
+            break;
+            case STX_TERM:
+                if (!checkTerm(context, current)) return 0;
+            break;
+            case STX_EXPRESSION:
+                performShuntingYardAlgorithm(context->tree, current);
+            break;
+            default:
+            break;
         }
     }
     return 1;
@@ -911,6 +1113,7 @@ static int checkExpressions(struct SemanticContext *context)
 {
     struct STX_TreeIterator iterator;
     struct STX_SyntaxTreeNode *current = STX_getRootNode(context->tree);
+
     for (
         STX_initializeTreeIterator(&iterator, current);
         current;

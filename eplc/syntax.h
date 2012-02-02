@@ -123,6 +123,17 @@ struct STX_NodeAttribute
         {
             enum STX_TermType termType;
             enum LEX_TokenType tokenType;
+            union
+            {
+                struct STX_SyntaxTreeNode *typeNode;
+                struct
+                {
+                    enum STX_PrimitiveTypeType type;
+                    int bitCount;
+                    const char *attribs;
+                    int attribLength;
+                };
+            };
         } termAttributes;
         struct
         {
@@ -240,6 +251,8 @@ struct STX_SyntaxTreeNode *STX_getLastChild(const struct STX_SyntaxTreeNode *nod
 
 struct STX_SyntaxTreeNode *STX_getNext(const struct STX_SyntaxTreeNode *node);
 
+struct STX_SyntaxTreeNode *STX_getPrevious(const struct STX_SyntaxTreeNode *node);
+
 void STX_initializeTreeIterator(struct STX_TreeIterator *iterator, struct STX_SyntaxTreeNode *node);
 
 struct STX_SyntaxTreeNode *STX_getNextPreorder(struct STX_TreeIterator *iterator);
@@ -248,8 +261,17 @@ struct STX_SyntaxTreeNode *STX_getNextPostorder(struct STX_TreeIterator *iterato
 
 void STX_setSkipSubtree(struct STX_TreeIterator *iterator, int skip);
 
+void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node);
+
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 
 const char * STX_PrimitiveTypeTypeToString(enum STX_PrimitiveTypeType type);
+
+void STX_appendChild(
+    struct STX_SyntaxTree *tree,
+    struct STX_SyntaxTreeNode *node,
+    struct STX_SyntaxTreeNode *child);
+
+void STX_removeAllChildren(struct STX_SyntaxTreeNode *node);
 
 #endif // SYNTAX_H

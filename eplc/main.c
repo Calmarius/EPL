@@ -376,7 +376,8 @@ int dumpTreeCallback(struct STX_SyntaxTreeNode *node, int level, void *userData)
         node->previousSiblingIndex,
         node->nextSiblingIndex,
         node->inScopeId,
-        node->definesScopeId);
+        node->definesScopeId
+    );
     return 1;
 }
 
