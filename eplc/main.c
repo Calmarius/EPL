@@ -148,6 +148,7 @@ const char *typePrefixTypeToString(enum STX_TypePrefix moduleType)
 {
     switch (moduleType)
     {
+        STRINGCASE(STX_TP_NONE)
         STRINGCASE(STX_TP_BUFFER)
         STRINGCASE(STX_TP_HANDLE)
         STRINGCASE(STX_TP_LOCALPTR)
@@ -327,6 +328,60 @@ const char *attributeToString(const struct STX_SyntaxTreeNode *node)
         break;
         default:
         break;
+    }
+    if (attribute->typeInformation.metaType != STX_TYT_NONE)
+    {
+        const struct STX_TypeInformation *typeInfo = &attribute->typeInformation;
+
+        ptr += sprintf(ptr, "type = '");
+        if (typeInfo->assignable)
+        {
+            ptr += sprintf(ptr, "left value of ");
+        }
+        switch (typeInfo->prefix)
+        {
+            case STX_TP_BUFFER:
+                ptr += sprintf(ptr, "buffer of ");
+            break;
+            case STX_TP_HANDLE:
+                ptr += sprintf(ptr, "handle of ");
+            break;
+            case STX_TP_LOCALPTR:
+                ptr += sprintf(ptr, "localptr of ");
+            break;
+            case STX_TP_NONE:
+            break;
+            case STX_TP_POINTER:
+                ptr += sprintf(ptr, "pointer of ");
+            break;
+            case STX_TP_STATICPTR:
+                ptr += sprintf(ptr, "staticptr of ");
+            break;
+        }
+        if (typeInfo->metaType == STX_TYT_SIMPLE)
+        {
+            switch (typeInfo->type)
+            {
+                case STX_STT_UNSIGNED_INT:
+                    ptr += sprintf(ptr, "$u");
+                break;
+                case STX_STT_SIGNED_INT:
+                    ptr += sprintf(ptr, "$i");
+                break;
+                case STX_STT_FLOAT:
+                    ptr += sprintf(ptr, "$f");
+                break;
+            }
+            if (typeInfo->bitCount)
+            {
+                ptr += sprintf(ptr, "%d", typeInfo->bitCount);
+            }
+            if (typeInfo->attribLength)
+            {
+                ptr += sprintf(ptr, "_%.*s", typeInfo->attribLength, typeInfo->attribs);
+            }
+        }
+        ptr += sprintf(ptr, "' ");
     }
     if (attribute->name)
     {

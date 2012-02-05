@@ -829,7 +829,7 @@ static int checkQualifiedName(
     struct STX_SyntaxTreeNode *firstChild;
     struct STX_SyntaxTreeNode *declarationNode;
     enum STX_NodeType parentNodeType;
-    struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
+//    struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
 
     if (node->nodeType != STX_QUALIFIED_NAME) return 1;
     parentNode = STX_getParentNode(node);
@@ -874,7 +874,8 @@ static int checkQualifiedName(
     // Check if the symbol found.
     if (declarationNode)
     {
-        nodeAttr->symbolDefinitionNodeId = declarationNode->id;
+        struct STX_NodeAttribute *parentNodeAttr = STX_getNodeAttribute(parentNode);
+        parentNodeAttr->symbolDefinitionNodeId = declarationNode->id;
     }
     else
     {
@@ -892,6 +893,8 @@ static int checkQualifiedName(
             return 0;
         }
     }
+    // Remove the qualified name node.
+    STX_removeNode(context->tree, node);
 
     return 1;
 }
@@ -1080,11 +1083,88 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
     free(result);
 }
 
-static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTreeNode *current)
+static int checkTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTreeNode *current)
+{
+    struct STX_NodeAttribute *attr = STX_getNodeAttribute(current);
+    switch (attr->termAttributes.termType)
+    {
+        case STX_TT_SIMPLE:
+        {
+            struct STX_TypeInformation *typeInfo = &attr->typeInformation;
+            switch (attr->termAttributes.tokenType)
+            {
+                case LEX_OCTAL_NUMBER:
+                case LEX_HEXA_NUMBER:
+                case LEX_DECIMAL_NUMBER:
+                    typeInfo->metaType = STX_TYT_SIMPLE;
+                    typeInfo->bitCount = 0;
+                    typeInfo->attribs = "";
+                    typeInfo->attribLength = 0;
+                    assert(attr->nameLength);
+                    if (attr->name[0] == '-')
+                    {
+                        typeInfo->type = STX_STT_SIGNED_INT;
+                    }
+                    else
+                    {
+                        typeInfo->type = STX_STT_UNSIGNED_INT;
+                    }
+                break;
+                case LEX_FLOAT_NUMBER:
+                    typeInfo->metaType = STX_TYT_SIMPLE;
+                    typeInfo->bitCount = 0;
+                    typeInfo->attribs = "";
+                    typeInfo->attribLength = 0;
+                    assert(attr->nameLength);
+                    typeInfo->type = STX_STT_FLOAT;
+                break;
+                default:
+                break;
+
+            }
+        }
+        break;
+        default:
+        break;
+    }
+    return 1;
+}
+
+static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTreeNode *exprNode)
 {
     struct STX_TreeIterator iterator;
+    struct STX_SyntaxTreeNode *current;
 
-    STX_initializeTreeIterator(&iterator, current);
+    STX_initializeTreeIterator(&iterator, exprNode);
+    // First identify symbol, and organize the tree.
+    for(
+        current = STX_getNextPostorder(&iterator);
+        current;
+    )
+    {
+        switch (current->nodeType)
+        {
+            case STX_QUALIFIED_NAME:
+            {
+                struct STX_SyntaxTreeNode *tmp = STX_getNextPostorder(&iterator);
+                if (!checkQualifiedName(context, current)) return 0;
+                current = tmp;
+                continue;
+            }
+            break;
+            case STX_TERM:
+                if (!checkTerm(context, current)) return 0;
+            break;
+            case STX_EXPRESSION:
+                performShuntingYardAlgorithm(context->tree, current);
+            break;
+            default:
+            break;
+        }
+        current = STX_getNextPostorder(&iterator);
+    }
+    // Do another transversal to assign and check the types
+    STX_initializeTreeIterator(&iterator, exprNode);
     for(
         current = STX_getNextPostorder(&iterator);
         current;
@@ -1093,14 +1173,8 @@ static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTre
     {
         switch (current->nodeType)
         {
-            case STX_QUALIFIED_NAME:
-                if (!checkQualifiedName(context, current)) return 0;
-            break;
             case STX_TERM:
-                if (!checkTerm(context, current)) return 0;
-            break;
-            case STX_EXPRESSION:
-                performShuntingYardAlgorithm(context->tree, current);
+                if (!checkTypeOfTerm(context, current)) return 0;
             break;
             default:
             break;

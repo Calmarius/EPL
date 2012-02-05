@@ -707,13 +707,13 @@ static int parseExpression(struct SyntaxContext *context)
         }
         descendNewNode(context, STX_OPERATOR);
         {
+            allocateAttributeForCurrent(context);
             if (token->tokenType == LEX_IDENTIFIER)
             {
                 if (!parseQualifiedName(context)) return 0;
             }
             else
             {
-                allocateAttributeForCurrent(context);
                 attribute = getCurrentAttribute(context);
                 attribute->operatorAttributes.type = getCurrentToken(context)->tokenType;
                 acceptCurrent(context);

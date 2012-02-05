@@ -525,6 +525,11 @@ static int doTokenization(struct LexerContext *context)
                 case '-':
                     startNewToken(context, LEX_SUBTRACT_OPERATOR);
                     acceptCurrent(context);
+                    if (isDecimal(getCurrentCharacter(context)))
+                    {
+                        setCurrentTokenType(context, LEX_DECIMAL_NUMBER);
+                        if (!scanNumber(context)) return 0;
+                    }
                     finishCurrentToken(context);
                 break;
                 case ',':

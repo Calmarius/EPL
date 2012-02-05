@@ -53,6 +53,7 @@ enum STX_ModuleAttribute
 
 enum STX_TypePrefix
 {
+    STX_TP_NONE,
     STX_TP_POINTER,
     STX_TP_LOCALPTR,
     STX_TP_BUFFER,
@@ -82,6 +83,31 @@ enum STX_PrimitiveTypeType
     STX_STT_SIGNED_INT,
     STX_STT_UNSIGNED_INT,
     STX_STT_FLOAT
+};
+
+enum STX_TypeOfType
+{
+    STX_TYT_NONE,
+    STX_TYT_SIMPLE,
+    STX_TYT_USERTYPE,
+};
+
+struct STX_TypeInformation
+{
+    union
+    {
+        struct STX_SyntaxTreeNode *typeNode;
+        struct
+        {
+            enum STX_PrimitiveTypeType type;
+            int bitCount;
+            const char *attribs;
+            int attribLength;
+        };
+    };
+    enum STX_TypeOfType metaType;
+    enum STX_TypePrefix prefix;
+    int assignable;
 };
 
 /**
@@ -123,17 +149,6 @@ struct STX_NodeAttribute
         {
             enum STX_TermType termType;
             enum LEX_TokenType tokenType;
-            union
-            {
-                struct STX_SyntaxTreeNode *typeNode;
-                struct
-                {
-                    enum STX_PrimitiveTypeType type;
-                    int bitCount;
-                    const char *attribs;
-                    int attribLength;
-                };
-            };
         } termAttributes;
         struct
         {
@@ -159,6 +174,7 @@ struct STX_NodeAttribute
             int hasBreak;
         } loopAttributes;
     };
+    struct STX_TypeInformation typeInformation;
     const char *name;
     int nameLength;
     const char *comment;
