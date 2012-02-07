@@ -197,7 +197,7 @@ struct STX_SyntaxTreeNode
     int lastChildIndex;
     int nextSiblingIndex;
     int previousSiblingIndex;
-    int attributeIndex;
+    struct STX_NodeAttribute attribute;
     int beginLine;
     int beginColumn;
     int endLine;
@@ -257,7 +257,7 @@ void STX_destroySyntaxTree(struct STX_SyntaxTree *tree);
 
 int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback callback, void *userData);
 
-struct STX_NodeAttribute *STX_getNodeAttribute(const struct STX_SyntaxTreeNode *node);
+struct STX_NodeAttribute *STX_getNodeAttribute(struct STX_SyntaxTreeNode *node);
 
 struct STX_SyntaxTreeNode *STX_getParentNode(const struct STX_SyntaxTreeNode *node);
 

@@ -185,7 +185,7 @@ const char *termTypeToString(enum STX_TermType type)
 
 #undef STRINGCASE
 
-const char *attributeToString(const struct STX_SyntaxTreeNode *node)
+const char *attributeToString(struct STX_SyntaxTreeNode *node)
 {
     static char buffer[500];
     char *ptr = buffer;

@@ -26,7 +26,7 @@
         <task id="4" name="Hibaverem" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         <task id="5" name="Forr&#xE1;sk&#xF3;d beolvas&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
       </task>
-      <task id="6" name="EPL ford&#xED;t&#xF3;" note="" work="576000" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+      <task id="6" name="EPL ford&#xED;t&#xF3;" note="" work="547200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
         <task id="7" name="EPL lexik&#xE1;lis elemz&#x151;" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <task id="8" name="Azonos&#xED;t&#xF3;k felsimer&#xE9;se" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="9" name="Sz&#xE1;mok felismer&#xE9;se" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
@@ -42,7 +42,7 @@
           <task id="18" name="parse f&#xFC;ggv&#xE9;nyek &#xE1;t&#xED;r&#xE1;sa scan f&#xFC;ggv&#xE9;nyekre" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="19" name="Stringek bin&#xE1;riss&#xE1; alak&#xED;t&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         </task>
-        <task id="20" name="EPL szintaxis elemz&#x151;" note="" work="230400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
+        <task id="20" name="EPL szintaxis elemz&#x151;" note="" work="201600" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <task id="21" name="Nyelvtan defini&#xE1;l&#xE1;sa" note="" work="144000" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
             <task id="22" name="Deklar&#xE1;ci&#xF3;khoz" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
               <task id="23" name="V&#xE1;ltoz&#xF3;deklar&#xE1;ci&#xF3;" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
@@ -91,7 +91,7 @@
           <task id="57" name="getCurrentb&#x151;l getCurrentToken-t csin&#xE1;lni" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="58" name="Platform contextek" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
           <task id="59" name="Node-ok terjedelm&#xE9;nek a t&#xE1;rol&#xE1;sa" note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
-          <task id="60" name="Attributumokat hozz&#xE1;csapni a node-khoz." note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+          <task id="60" name="Attributumokat hozz&#xE1;csapni a node-khoz." note="" work="0" start="20111117T000000Z" end="20111117T080000Z" work-start="20111117T080000Z" percent-complete="100" priority="0" type="normal" scheduling="fixed-work"/>
         </task>
         <task id="61" name="EPL szemantikai elemz&#x151;" note="" work="259200" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
           <task id="62" name="Kifejez&#xE9;sek valid&#xE1;l&#xE1;sa" note="" work="86400" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work">
@@ -152,6 +152,7 @@
       <task id="104" name="Konzol helyett f&#xE1;jlokba &#xFC;r&#xED;tse a dolgait." note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       <task id="105" name="Out of memory esetek lekezel&#xE9;se" note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
       <task id="106" name="Besz&#xE9;desebb hiba&#xFC;zenetek." note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
+      <task id="107" name="&#xC1;trakni ezt az eg&#xE9;szet bugzilla al&#xE1;." note="" work="28800" start="20111117T000000Z" end="20111117T170000Z" work-start="20111117T080000Z" percent-complete="0" priority="0" type="normal" scheduling="fixed-work"/>
     </task>
   </tasks>
   <resource-groups/>
