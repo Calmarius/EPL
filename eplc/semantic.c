@@ -8,41 +8,49 @@
 #include "assocarray.h"
 #include "error.h"
 
+/**
+ * A struct for scope.
+ *
+ * Variable references in the same scope refer to the same variable.
+ */
 struct Scope
 {
-    struct Scope *parentScope;
-    struct ASSOC_Array *symbols;
+    struct Scope *parentScope; ///< parent scope where the lookup will continue.
+    struct ASSOC_Array *symbols; ///< associative array storing the symbols.
     /// The node of the symbol that created the scope.
-    struct STX_SyntaxTreeNode *node;
-    int id;
+    struct STX_SyntaxTreeNode *node; ///< The node in the syntax tree
+    int id; ///< Id of the scope
 
-    struct STX_SyntaxTreeNode **usedNamespaces;
-    int usedNameSpacesAllocated;
-    int usedNameSpaceCount;
+    struct STX_SyntaxTreeNode **usedNamespaces; ///< dynamic array storing the used namespaces.
+    int usedNameSpacesAllocated; ///< entries allocated in the dynamic array.
+    int usedNameSpaceCount; ///< count of entries in the dynamic array.
 };
 
+/**
+ * Context struct storing everything about the semantic checking.
+ */
 struct SemanticContext
 {
-    struct STX_SyntaxTree *tree;
+    struct STX_SyntaxTree *tree; ///< The syntax tree to be checked.
+     /// The current node during the checking.
+     /// Its used as target node when reporting errors
     struct STX_SyntaxTreeNode *currentNode;
 
-    struct Scope *currentScope;
-    struct Scope *rootScope;
+    struct Scope *currentScope; ///< The current scope we are
+    struct Scope *rootScope; ///< The global scope of the module.
 
-    struct Scope **scopePointers;
+    struct Scope **scopePointers; ///< Dynamic array storing the scope references
     int scopePointersAllocated;
     int scopeCount;
 
-    int currentLevel;
-    int currentScopeId;
 };
 
 enum PrecedenceLevel
 {
-    PREC_RELATIONAL,
-    PREC_ADDITIVE,
-    PREC_MULTIPLICATIVE,
-    PREC_ACCESSOR
+    PREC_RELATIONAL, ///< comparison operators
+    PREC_ADDITIVE, ///< arithmetic add, subtract; bitwise or and xor operations; logical or and xor
+    PREC_MULTIPLICATIVE, ///< arithmetic division and multiplication.
+    PREC_ACCESSOR ///< record access operatior.
 };
 
 #define SLO_LOCAL_ONLY 0
@@ -56,7 +64,13 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
     struct STX_SyntaxTreeNode *node
 );
 
-
+/**
+ * Allocates and initializes a scope
+ *
+ * @param parentScope the parent of the scope.
+ *
+ * @return the new scope
+ */
 static struct Scope *allocateScope(
     struct SemanticContext *context,
     struct Scope *parentScope)
@@ -65,6 +79,7 @@ static struct Scope *allocateScope(
 
     if (context->scopeCount == context->scopePointersAllocated)
     {
+        // extend array if needed.
         if (!context->scopePointersAllocated)
         {
             context->scopePointersAllocated = 20;
@@ -99,6 +114,9 @@ static enum STX_NodeType getCurrentNodeType(struct SemanticContext *context)
     return getCurrentNode(context)->nodeType;
 }
 
+/**
+ * Creates a new scope as a child scope of the current scope, and makes it current.
+ */
 static void descendNewScope(struct SemanticContext *context)
 {
     context->currentScope = allocateScope(context, context->currentScope);
@@ -106,12 +124,18 @@ static void descendNewScope(struct SemanticContext *context)
     context->currentScope->node = getCurrentNode(context);
 }
 
+/**
+ * Makes the parents scope of the current scope the current.
+ */
 static void ascendToParentScope(struct SemanticContext *context)
 {
     context->currentScope = context->currentScope->parentScope;
 }
 
-
+/**
+ * Adds the name of the current node to the current scope.
+ * The name is the 'name' attribute of the current node.
+ */
 static int addSymbolToCurrentScope(
     struct SemanticContext *context)
 {
@@ -151,7 +175,11 @@ static int addSymbolToCurrentScope(
     return 1;
 }
 
-
+/**
+ * Dumps the information of one symbol.
+ *
+ * This is a callback function of the tree transverser.
+ */
 static int handleSymbol(struct ASSOC_KeyValuePair *kvp, int level, int index, void *userData)
 {
     printf(
@@ -163,6 +191,9 @@ static int handleSymbol(struct ASSOC_KeyValuePair *kvp, int level, int index, vo
     return 1;
 }
 
+/**
+ * Dumps symbols of the scopes to the stdout.
+ */
 static void dumpScopes(struct SemanticContext *context)
 {
     int i;
@@ -182,6 +213,14 @@ static void dumpScopes(struct SemanticContext *context)
     }
 }
 
+/**
+ * Makes the first child of the current node current.
+ *
+ * @param [in] needError Set true to raise E_SMC_CORRUPT_SYNTAX_TREE
+ *      error if the current node don't have children.
+ *
+ * @return Nonzero on success, zero there are no child nodes.
+ */
 static int enterCurrentNode(struct SemanticContext *context, int needError)
 {
     if (context->currentNode->firstChildIndex == -1)
@@ -198,6 +237,14 @@ static int enterCurrentNode(struct SemanticContext *context, int needError)
     return 1;
 }
 
+/**
+ * Compares the type of the current node with the given type.
+ * Raises E_SMC_CORRUPT_SYNTAX_TREE if not match.
+ *
+ * @param [in] type The type to check.
+ *
+ * @return Nonzero success.
+ */
 static int assertNodeType(struct SemanticContext *context, enum STX_NodeType type)
 {
     if (getCurrentNodeType(context) != type)
@@ -208,6 +255,14 @@ static int assertNodeType(struct SemanticContext *context, enum STX_NodeType typ
     return 1;
 }
 
+/**
+ * Makes the next sibling of the current node current.
+ *
+ * @param [in] needError Set true to make the function raise an E_SMC_CORRUPT_SYNTAX_TREE
+ *      error if there is no next sibling.
+ *
+ * @return Nonzero on success.
+ */
 static int moveToNextNode(struct SemanticContext *context, int needError)
 {
     if (getCurrentNode(context)->nextSiblingIndex < 0)
@@ -223,18 +278,38 @@ static int moveToNextNode(struct SemanticContext *context, int needError)
     return 1;
 }
 
+/**
+ * Makes the parrent node of the current node current.
+ *
+ * @return 1.
+ */
 static int leaveCurrentNode(struct SemanticContext *context)
 {
     context->currentNode = &context->tree->nodes[context->currentNode->parentIndex];
     return 1;
 }
 
+/**
+ * Adds the parameter to the current scope.
+ *
+ * @return Nonzero on success.
+ */
 static int checkParameter(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_PARAMETER)) return 0;
     return addSymbolToCurrentScope(context);
 }
 
+/**
+ * Checks parameter list. Raises E_SMC_TOO_FEW_PARAMETERS error if there are too
+ * few arguments. Raises E_SMC_TOO_MANY_ARGUMENTS error if there err too
+ * many arguemnts.
+ *
+ * @param [in] minParameterCount Minimum amount of parameters.
+ * @param [in] maxParameterCount Maximum amount of parameters.
+ *
+ * @return Nonzero on success.
+ */
 static int checkParameterList(
     struct SemanticContext *context,
     int minParameterCount,
@@ -274,6 +349,11 @@ static int checkParameterList(
     return 1;
 }
 
+/**
+ * Checks statements in a block.
+ *
+ * @return Nonzero on success.
+ */
 static int checkBlock(struct SemanticContext *context)
 {
     descendNewScope(context);
@@ -291,6 +371,11 @@ static int checkBlock(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks if statement.
+ *
+ * @return Nonzero on success.
+ */
 static int checkIfStatement(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_IF_STATEMENT)) return 0;
@@ -318,6 +403,11 @@ static int checkIfStatement(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks loop statement.
+ *
+ * @return Nonzero on success.
+ */
 static int checkLoopStatement(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_LOOP_STATEMENT)) return 0;
@@ -331,6 +421,10 @@ static int checkLoopStatement(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Returns nonzero if the statement of the given type is breakable with
+ * the break statement.
+ */
 static int isBreakableNodeType(enum STX_NodeType type)
 {
     switch (type)
@@ -345,6 +439,10 @@ static int isBreakableNodeType(enum STX_NodeType type)
     return 0;
 }
 
+/**
+ * Returns nonzero if the statement of the given type is continuable with
+ * the continue statement.
+ */
 static int isContinuableNodeType(enum STX_NodeType type)
 {
     switch (type)
@@ -358,14 +456,22 @@ static int isContinuableNodeType(enum STX_NodeType type)
     return 0;
 }
 
-
+/**
+ * Checks break or continue statements.
+ * Assigns the node id of the statement they break or continue.
+ *
+ * May raise E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK or
+ * E_SMC_CONTINUE_IS_NOT_IN_LOOP_OR_CASE_BLOCK errors.
+ *
+ * @return Nonzero on success.
+ */
 static int checkBreakContinueStatement(struct SemanticContext *context)
 {
     struct STX_NodeAttribute *currentNodeAttr;
     struct STX_SyntaxTreeNode *node = getCurrentNode(context);
     int remainingLevels = 1;
     enum STX_NodeType type = getCurrentNodeType(context);
-
+    // Check the type of the current node, accept only break and continue.
     switch (type)
     {
         case STX_BREAK:
@@ -376,8 +482,10 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
             return 0;
     }
     currentNodeAttr = STX_getNodeAttribute(getCurrentNode(context));
-    remainingLevels = currentNodeAttr->breakContinueAttributes.levels;
+    remainingLevels = currentNodeAttr->breakContinueAttributes.levels; //< break and continue may break or continue multiple levels of loops.
 
+    // Find the statement to break or continue
+    // From the current node, move upward in the tree. Look for breakable or continuable statements.
     while (node->parentIndex >= 0)
     {
         if (
@@ -385,21 +493,30 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
             ((type == STX_CONTINUE) && isContinuableNodeType(node->nodeType))
         )
         {
+            // Decrease the level when found one.
             remainingLevels--;
         }
 
         if (!remainingLevels)
         {
-            if (node->nodeType == STX_LOOP_STATEMENT)
+            // Reached the appropriate statement.
+            if ((node->nodeType == STX_LOOP_STATEMENT) && (type == STX_BREAK))))
             {
+                // If the current statement is a break and it breaks a loop.
+                // Set a flag on the loop statement whether it has a break.
+                // (All loops must have a break, otherwise they would be infinite.)
                 struct STX_NodeAttribute *loopAttr = STX_getNodeAttribute(node);
                 loopAttr->loopAttributes.hasBreak = 1;
             }
+            // Associtate the node id of the breaked or continued statement.
             currentNodeAttr->breakContinueAttributes.associatedNodeId = node->id;
             return 1;
+            // success.
         }
+        // Move the parent node.
         node = &node->belongsTo->nodes[node->parentIndex];
     }
+    // At this point node appropriate statement found. Raise error.
     switch (type)
     {
         case STX_BREAK:
@@ -414,6 +531,11 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
     return 0;
 }
 
+/**
+ * Checks the parts of the case block.
+ *
+ * @return Nonzero on success.
+ */
 static int checkCaseBlock(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_CASE)) return 0;
