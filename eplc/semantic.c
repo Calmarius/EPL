@@ -500,7 +500,7 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
         if (!remainingLevels)
         {
             // Reached the appropriate statement.
-            if ((node->nodeType == STX_LOOP_STATEMENT) && (type == STX_BREAK))))
+            if ((node->nodeType == STX_LOOP_STATEMENT) && (type == STX_BREAK))
             {
                 // If the current statement is a break and it breaks a loop.
                 // Set a flag on the loop statement whether it has a break.
@@ -545,6 +545,11 @@ static int checkCaseBlock(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks the switch statement.
+ *
+ * @return Nonzero on success.
+ */
 static int checkSwitchStatement(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_SWITCH)) return 0;
@@ -558,6 +563,11 @@ static int checkSwitchStatement(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks a statement.
+ *
+ * @return Nonzero on success.
+ */
 static int checkStatement(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -593,6 +603,11 @@ static int checkStatement(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks function delcarations.
+ *
+ * @return Nonzero on success.
+ */
 static int checkFunction(struct SemanticContext *context)
 {
     const struct STX_NodeAttribute *attr;
@@ -618,6 +633,11 @@ static int checkFunction(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks operator functions.
+ *
+ * @return Nonzero on success.
+ */
 static int checkOperatorFunction(struct SemanticContext *context)
 {
     const struct STX_NodeAttribute *attr;
@@ -643,6 +663,11 @@ static int checkOperatorFunction(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks platform context declarations.
+ *
+ * @return Nonzero on success.
+ */
 static int checkForPlatformDeclaration(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_FOR_PLATFORMS)) return 0;
@@ -669,6 +694,11 @@ static int checkForPlatformDeclaration(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks platform context declarations.
+ *
+ * @return Nonzero on success.
+ */
 static int checkNamespace(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_NAMESPACE)) return 0;
@@ -686,6 +716,13 @@ static int checkNamespace(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Adds node to the used namespaces of the current scope.
+ *
+ * @param node The namespace node of the using declaration.
+ *
+ * @return Nonzero on success.
+ */
 static int addNodeToUsedNamespaces(
     struct SemanticContext *context,
     struct STX_SyntaxTreeNode *node
@@ -721,6 +758,12 @@ static int addNodeToUsedNamespaces(
     return 1;
 }
 
+/**
+ * Checks using declaration. Adds the namespace to the current scope's
+ * used namespace set.
+ *
+ * @return Nonzero on success.
+ */
 static int checkUsingDeclaration(struct SemanticContext *context)
 {
     struct STX_SyntaxTreeNode *declarationNode;
@@ -746,6 +789,11 @@ static int checkUsingDeclaration(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks declarations.
+ *
+ * @return Nonzero on success.
+ */
 static int checkDeclaration(struct SemanticContext *context)
 {
     switch (getCurrentNodeType(context))
@@ -779,6 +827,11 @@ static int checkDeclaration(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks the module.
+ *
+ * @return Nonzero on success.
+ */
 static int checkModule(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_MODULE)) return 0;
@@ -801,6 +854,11 @@ static int checkModule(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Checks the root node. All checks start from this.
+ *
+ * @return Nonzero on success.
+ */
 static int checkRootNode(struct SemanticContext *context)
 {
     if (!assertNodeType(context, STX_ROOT)) return 0;
@@ -813,6 +871,23 @@ static int checkRootNode(struct SemanticContext *context)
 
 struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree);
 
+/**
+ * Looks up a symbol.
+ *
+ * @param startScopeId The id of the scope where the lookup start.
+ * @param varName The name of the symbol to look up.
+ * @param varNameLength The length of the name.
+ * @param lookupOptions It can be a conbination of the following values:
+ *      - SLO_CHECK_PARENT_SCOPES: checks the parent scopes of the target scopes.
+ *      - SLO_CHECK_USED_NAMESPACES: checks the used namespaces to (using declaration).
+ *      When none of them are set, you can use SLO_LOCAL_ONLY which is zero. In this case
+ *      only the given scope is checked.
+ *
+ * @return The node that declares the symbol. Null if the symbols is not found or error happened.
+ *      This function can raise E_SMC_AMBIGUOS_NAME when two of the used namespaces declare
+ *      a symbol of the given name.
+ *
+ */
 static struct STX_SyntaxTreeNode *lookUpSymbol(
     struct SemanticContext *context,
     int startScopeId,
@@ -864,7 +939,7 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
             return foundNode;
         }
 
-        // try the parent scope if any and flag is set.
+        // Symbol still not found, try the parent scopes if any and flag is set.
         if (scope->parentScope && (lookupOptions & SLO_CHECK_PARENT_SCOPES))
         {
             return lookUpSymbol(
@@ -879,6 +954,20 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
     return 0;
 }
 
+/**
+ * Find the symbol declaration from the given fully qualified name node.
+ *
+ * @param node An STX_QUALIFIED_NAME node. Which is looked up.
+ *
+ * @return The node that declared the symbol. Returns null if the symbol is not found
+ *      in the last namespace of the path.
+ *
+ *      Raises E_SMC_NOT_A_NAMESPACE if one of the path
+ *      elements is not a namespace. (Except the last)
+ *
+ *      Raises E_SMC_UNDEFINED_SYMBOL if the one of the path elements is not found.
+ *      (Except the last)
+ */
 static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
     struct SemanticContext *context,
     struct STX_SyntaxTreeNode *node
@@ -899,9 +988,11 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
 
     currentChild = STX_getFirstChild(node);
 
+    // Go through the child nodes except the last one.
     while (STX_getNext(currentChild))
     {
         currentAttribute = STX_getNodeAttribute(currentChild);
+        // Look the symbol up in the current scope. (Initial scope is the root scope.)
         currentNameSpace = lookUpSymbol(
             context,
             currentScope->id,
@@ -911,19 +1002,21 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
         );
         if (currentNameSpace)
         {
+            // Namespace symbol is found.
             if (currentNameSpace->nodeType != STX_NAMESPACE)
             {
                 context->currentNode = currentChild;
                 ERR_raiseError(E_SMC_NOT_A_NAMESPACE);
                 return 0;
             }
-            // So this is a namespace set it's scope as current.
+            // So this is a namespace, set it's scope as current.
             currentScope = context->scopePointers[currentNameSpace->definesScopeId];
             // Go to the next child.
             currentChild = STX_getNext(currentChild);
         }
         else
         {
+            // Not found, error.
             context->currentNode = currentChild;
             ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
             return 0;
@@ -942,6 +1035,22 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
     return declarationNode;
 }
 
+/**
+ * Checks qualified name nodes in expressions. It looks the symbol up
+ * and set the definer node id on its parent, the deletes the qualified name
+ * node from the tree.
+ *
+ * This function also checks the context where the symbol is used. For example
+ * if the symbol used like an operator, it checks whether it is an operator function.
+ *
+ * @param node The STX_QUALIFIED_NAME node to check.
+ *
+ * @return Nonzero on success.
+ *
+ * Raises E_SMC_UNDEFINED_SYMBOL if the symbol is not found.
+ * Raises E_SMC_NOT_AN_OPERATOR if the symbol is not operator and used like
+ *      an operator.
+ */
 static int checkQualifiedName(
     struct SemanticContext *context,
     struct STX_SyntaxTreeNode *node
@@ -951,7 +1060,6 @@ static int checkQualifiedName(
     struct STX_SyntaxTreeNode *firstChild;
     struct STX_SyntaxTreeNode *declarationNode;
     enum STX_NodeType parentNodeType;
-//    struct STX_NodeAttribute *nodeAttr = STX_getNodeAttribute(node);
 
     if (node->nodeType != STX_QUALIFIED_NAME) return 1;
     parentNode = STX_getParentNode(node);
@@ -985,7 +1093,8 @@ static int checkQualifiedName(
 
         if (!declarationNode)
         {
-            // Either symbol is not found, or error happened.
+            // Either symbol is not found, or error happened. If error happened,
+            // report error.
             if (ERR_isError())
             {
                 context->currentNode = node;
@@ -996,11 +1105,13 @@ static int checkQualifiedName(
     // Check if the symbol found.
     if (declarationNode)
     {
+        // Set the id of the definer symbol on the parent.
         struct STX_NodeAttribute *parentNodeAttr = STX_getNodeAttribute(parentNode);
         parentNodeAttr->symbolDefinitionNodeId = declarationNode->id;
     }
     else
     {
+        // Symbol not defined, error.
         context->currentNode = node;
         ERR_raiseError(E_SMC_UNDEFINED_SYMBOL);
         return 0;
@@ -1015,12 +1126,15 @@ static int checkQualifiedName(
             return 0;
         }
     }
-    // Remove the qualified name node.
+    // Remove the qualified name node from the tree.
     STX_removeNode(context->tree, node);
 
     return 1;
 }
 
+/**
+ * WIP!
+ */
 static int checkTerm(
     struct SemanticContext *context,
     struct STX_SyntaxTreeNode *node
@@ -1029,6 +1143,16 @@ static int checkTerm(
     return 1;
 }
 
+/**
+ * Pushes data on a stack. It may enlarge the array provided
+ * as stack. So any pointers pointing to the elements may be invalidated.
+ * The stack pointer is increased, and size may be doubled.
+ *
+ * @param [in,out] stack An array of void* the stack itself.
+ * @param [in] data The data to push on the stack.
+ * @param [in,out] ptr The stack pointer.
+ * @param [in,out] size The current size of the stack.
+ */
 static void push(void **stack, void *data, int *ptr, int *size)
 {
     if (*ptr == *size)
@@ -1039,18 +1163,39 @@ static void push(void **stack, void *data, int *ptr, int *size)
     stack[(*ptr)++] = data;
 }
 
+/**
+ * Pops data from a stack.
+ *
+ * @param [in] stack The stack (an array of void*)
+ * @param [in,out] ptr The current stack pointer. Decreased by one.
+ *
+ * @return The topmost element that was on the top of the stack.
+ *      It returns null if the stack is empty.
+ */
 static void *pop(void **stack, int *ptr)
 {
     if (!*ptr) return 0;
     return stack[--(*ptr)];
 }
 
+/**
+ * Returns the topmost element on a stack.
+ *
+ * @param [in] stack The stack (an array of void*)
+ * @param [in] ptr The stack pointer.
+ *
+ * @return The topmost element on the stack.
+ */
 static void *peek(void **stack, int ptr)
 {
     if (!ptr) return 0;
     return stack[ptr - 1];
 }
-
+/**
+ * Returns the precedence level of an operator node (from an expression)
+ *
+ * @return The precedence level.
+ */
 static enum PrecedenceLevel getPrecedenceLevel(struct STX_SyntaxTreeNode *operatorNode)
 {
     struct STX_NodeAttribute *attr;
@@ -1099,6 +1244,14 @@ static enum PrecedenceLevel getPrecedenceLevel(struct STX_SyntaxTreeNode *operat
     }
 }
 
+/**
+ * Performs shunting yard algorithm on az expression node.
+ * Reorders the nodes according to the precedence. It does not
+ * reorders subexpressions in terms.
+ *
+ * @param [in,out] tree The syntax tree the node is in.
+ * @param [in,out] expressionNode the root node of the expression.
+ */
 static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *expressionNode)
 {
     struct STX_SyntaxTreeNode **operatorStack;
@@ -1114,6 +1267,7 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
     operatorStack = malloc(operatorStackSize * sizeof(struct STX_SyntaxTreeNode *));
     result = malloc(resultSize * sizeof(struct STX_SyntaxTreeNode *));
 
+    // Go through the nodes and pushes them to the result stack in postfix notation.
     for
     (
         currentNode = STX_getFirstChild(expressionNode);
@@ -1125,16 +1279,21 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
         switch (type)
         {
             case STX_TERM:
+                // Terms are pushed to the result immediately.
                 push((void**)result, currentNode, &resultPtr, &resultSize);
             break;
             case STX_OPERATOR:
             {
+                // if operator is encountered. All operators on the operator
+                // stack with stonger or equal precedence are pushed to the result.
+                // (Popping operators with equal precedence means all operators
+                // are left associative. )
                 for(;;)
                 {
                     struct STX_SyntaxTreeNode *top = peek((void**)operatorStack, operatorPtr);
                     if (top)
                     {
-                        if (getPrecedenceLevel(currentNode) < getPrecedenceLevel(top))
+                        if (getPrecedenceLevel(currentNode) <= getPrecedenceLevel(top))
                         {
                             push((void**)result, top, &resultPtr, &resultSize);
                             pop((void**)operatorStack, &operatorPtr);
@@ -1147,6 +1306,7 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
                         break;
                     }
                 }
+                // Finally push  the operator on the operator stack.
                 push((void**)operatorStack, currentNode, &operatorPtr, &operatorStackSize);
             }
             break;
@@ -1154,7 +1314,7 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
             break;
         }
     }
-    // Flush operand stack
+    // Flush remaining operator from the operand stack.
     for(;;)
     {
         struct STX_SyntaxTreeNode *top = peek((void**)operatorStack, operatorPtr);
@@ -1168,8 +1328,7 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
             break;
         }
     }
-
-
+    // Rebuild the expression node tree.
     STX_removeAllChildren(expressionNode);
     {
         int i;
@@ -1180,12 +1339,15 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
             switch (current->nodeType)
             {
                 case STX_TERM:
+                    // Term nodes are just appended.
                     STX_appendChild(tree, expressionNode, current);
                 break;
                 case STX_OPERATOR:
                 {
                     struct STX_SyntaxTreeNode *operand2 = STX_getLastChild(expressionNode);
                     struct STX_SyntaxTreeNode *operand1 = STX_getPrevious(operand2);
+                    // Append operators too, but remove two nodes before it and append them
+                    // as children of the operator node.
                     STX_appendChild(tree, expressionNode, current);
                     STX_removeNode(tree, operand1);
                     STX_removeNode(tree, operand2);
@@ -1194,13 +1356,13 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
                 }
                 break;
                 default:
+                    // This should never happen.
                     assert(0);
                 break;
             }
         }
     }
 
-//cleanup:
     free(operatorStack);
     free(result);
 }
