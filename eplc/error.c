@@ -1,7 +1,17 @@
+/**
+ * Global error handling module.
+ *
+ * Error codes are handled in this module.
+ */
+
 #include "error.h"
 
+/// Maximum number of raised error that can exist.
 #define ERROR_BUFFER_SIZE 100
 
+/**
+ * An array that stores the error codes.
+ */
 static enum ERR_ErrorCode errors[ERROR_BUFFER_SIZE] = {0};
 
 void ERR_raiseError(enum ERR_ErrorCode errorCode)

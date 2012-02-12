@@ -1,3 +1,9 @@
+/**
+ * Lexer module
+ *
+ * Generates tokens from the source code.
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,14 +11,25 @@
 #include "lexer.h"
 #include "error.h"
 
+/**
+ * A struct decribing a keyword-token mapping.
+ */
 struct KeywordTokenTypePair
 {
+    /// Pointer to the keyword text.
     const char *keywordText;
+    /// Length of the keyword text.
     int keywordLength;
+    /// The mapped token type.
     enum LEX_TokenType tokenType;
 };
 
-// this array must be ordered by the keyword names!
+/**
+ * Array of keyword-token mappings.
+ *
+ * IMPORTANT: binary search is performed on this array to find the token.
+ *      Keep the lexical order of the keywords!
+ */
 static struct KeywordTokenTypePair keywordMapping[] =
 {
     {"additive", 8, LEX_KW_ADDITIVE},
@@ -60,22 +77,39 @@ static struct KeywordTokenTypePair keywordMapping[] =
     {"vardecl", 7, LEX_KW_VARDECL},
 };
 
+/**
+ * This struct stores the context of the lexer.
+ *
+ * The lfCount and crCount used to count lines. The higher one is the current line.
+ * Line endings in most platforms are LF, CR, CR LF or  LF CR etc. So this trick is useful in
+ * most of the time.
+ *
+ *
+ */
 struct LexerContext
 {
-    const char *current;
+    const char *current; ///< pointer to the current char.
+    /// The lexer result which is populated during the scanning.
     struct LEX_LexerResult *result;
-    int tokensAllocated;
-    int tokenCount;
-    int currentColumn;
-    int lfCount;
-    int crCount;
-    struct LEX_LexerToken *currentToken;
-    int stringsAllocated;
-    int currentStringLength;
-    int currentStringAllocated;
-    char *currentString;
+    int tokensAllocated; ///< Allocated tokens. (needed in a dynamic array.)
+    int tokenCount; ///< Count of tokens.  (needed for a dynamic array.)
+    int currentColumn; ///< The current column of the current charater.
+    int lfCount; ///< Count of LF characters.
+    int crCount; ///< Count of CR characters.
+    struct LEX_LexerToken *currentToken; ///< Current token being scanned.
+    int stringsAllocated; ///< Count of allocated binary string
+    int currentStringLength; ///< Length of the current binary string.
+    int currentStringAllocated; ///< Allocated length of the current string.
+    char *currentString; ///< Pointer to the current string.
 };
 
+/**
+ * Returns the current line the scanner is in.
+ *
+ * @param lexerContext context.
+ *
+ * @return current line.
+ */
 static int getCurrentLine(struct LexerContext *lexerContext)
 {
     return
@@ -84,6 +118,12 @@ static int getCurrentLine(struct LexerContext *lexerContext)
             lexerContext->crCount);
 }
 
+/**
+ * Starts a new token.
+ *
+ * @param lexerContext context.
+ * @param type The type of the new token.
+ */
 static void startNewToken(struct LexerContext *lexerContext, enum LEX_TokenType type)
 {
     assert(!lexerContext->currentToken);
@@ -112,6 +152,11 @@ static void startNewToken(struct LexerContext *lexerContext, enum LEX_TokenType 
     lexerContext->currentToken->length = 0;
 }
 
+/**
+ * Finishes the current token.
+ *
+ * @param lexerContext context
+ */
 static void finishCurrentToken(struct LexerContext *lexerContext)
 {
     assert(lexerContext->currentToken);
@@ -121,6 +166,12 @@ static void finishCurrentToken(struct LexerContext *lexerContext)
     lexerContext->currentToken = 0;
 }
 
+/**
+ * Sets the type of the current token.
+ *
+ * @param lexerContext context.
+ * @param newType The new type of the token.
+ */
 static void setCurrentTokenType(
     struct LexerContext *lexerContext,
     enum LEX_TokenType newType)
@@ -129,6 +180,13 @@ static void setCurrentTokenType(
     lexerContext->currentToken->tokenType = newType;
 }
 
+/**
+ * Notation: LETTER
+ *
+ * @param c character to check.
+ *
+ * @return Nonzero if the character is a latin letter or underscore, zero otherwise.
+ */
 static int isLetter(char c)
 {
     return
@@ -137,18 +195,40 @@ static int isLetter(char c)
         (c == '_');
 }
 
+/**
+ * Notation: OCTAL
+ *
+ * @param c character to check
+ *
+ * @return Nonzero if the character is an octal digit, zero otherwise.
+ */
 static int isOctal(char c)
 {
     return
         (('0' <= c) && (c <= '7'));
 }
 
+/**
+ * Notation: DECIMAL
+ *
+ * @param c character to check
+ *
+ * @return Nonzero if the character is an decimal digit, zero otherwise.
+ */
 static int isDecimal(char c)
 {
     return
         (('0' <= c) && (c <= '9'));
 }
 
+/**
+ * Notation: HEXA
+ *
+ * @param c character to check
+ *
+ * @return Nonzero if the character is a hexadecimal digit, zero otherwise.
+ *      lower and uppercase letters 10+ values allowed.
+ */
 static int isHexa(char c)
 {
     return
@@ -157,6 +237,19 @@ static int isHexa(char c)
         (('a' <= c) && (c <= 'f'));
 }
 
+/**
+ * Notation: SPACE
+ *
+ * @param c character to check
+ *
+ * @return Nonzero if the character is a white space character:
+ *      - space
+ *      - tab
+ *      - line feed
+ *      - vertical tab
+ *      - form feed
+ *      - carriage return.
+ */
 static int isWhitespace(char c)
 {
     return
@@ -168,11 +261,23 @@ static int isWhitespace(char c)
         (c == '\f');
 }
 
+/**
+ * Notation: ALNUM = LETTER | DECIMAL
+ *
+ * @param c character to check.
+ *
+ * @return Nonzero if the character is a letter or a decimal digit, zero otherwise.
+ */
 static int isAlphaNumeric(char c)
 {
     return isLetter(c) || isDecimal(c);
 }
 
+/**
+ * Moves the cursor forward with one character. Sets crCount, lfCount and currentColumn.
+ *
+ * @param context context.
+ */
 static void advance(struct LexerContext *context)
 {
     char c = *context->current;
@@ -191,23 +296,48 @@ static void advance(struct LexerContext *context)
     context->current++;
 }
 
+/**
+ * Accepts current character and advances to the next character.
+ *
+ * @param context context
+ */
 static void acceptCurrent(struct LexerContext *context)
 {
     assert(context->currentToken);
     context->currentToken->length++;
     advance(context);
 }
-
+/**
+ * Ignores current character and moves the cursor to the next.
+ *
+ * @param context context
+ */
 static void ignoreCurrent(struct LexerContext *context)
 {
     advance(context);
 }
 
+/**
+ * @param context context.
+ *
+ * @return The current character.
+ */
 static char getCurrentCharacter(struct LexerContext *context)
 {
     return *context->current;
 }
 
+/**
+ * Compares two non-zero terminated strings.
+ *
+ * @param str1,len1 The pointer to the first string and its length.
+ * @param str2,len2 The pointer to the second string and its length.
+ *
+ * @return
+ *      - Zero if the two strings are equal.
+ *      - Negative if the first is less.
+ *      - Positive if the first is bigger.
+ */
 static int compareBinaryString(
     const char *str1,
     int len1,
@@ -224,6 +354,14 @@ static int compareBinaryString(
     return d;
 }
 
+/**
+ * Scans indetifier. It may change the current token type, if keyword is found.
+ * identifier ::= LETTER ALNUM*
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
 static int scanIdentifier(struct LexerContext *context)
 {
     if (isLetter(getCurrentCharacter(context)))
@@ -266,11 +404,17 @@ static int scanIdentifier(struct LexerContext *context)
             }
         }
     }
-
-
     return 1;
 }
 
+/**
+ * Scans primitive type. (eg. $i32)
+ * built_in_type ::= '$' ('u' | 'i' | 'f') DECIMAL* ( '_' LETTER* )?
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
 static int scanBuiltInType(struct LexerContext *context)
 {
     if (getCurrentCharacter(context) == '$')
@@ -308,147 +452,130 @@ static int scanBuiltInType(struct LexerContext *context)
     return 1;
 }
 
-static int scanExponentialPart(struct LexerContext *context)
+/**
+ * Scans a number.
+ *      octal_integer ::= '0' OCTAL*
+ *      hexa_integer ::= '0' 'x' HEXA*
+ *      decimal_integer ::= DECIMAL+
+ *      float_number ::= DECIMAL+ ('.' DECIMAL+)? ( ('e' | 'E') ('+' | '-') DECIMAL+)?
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
+
+static int scanNumber(struct LexerContext *context)
 {
-    int c;
-    switch(getCurrentCharacter(context))
+    char c = getCurrentCharacter(context);
+    int octalTried = 0;
+
+    if (c == '0')
     {
-        case '-':
-        case '+':
-            acceptCurrent(context);
-        break;
-    }
-    c = 0;
-    while (isDecimal(getCurrentCharacter(context)))
-    {
+        // This can be an octal or a hexadecimal number at this point.
         acceptCurrent(context);
-        c++;
+        octalTried = 1;
+        if (getCurrentCharacter(context) == 'x')
+        {
+            // Now we are sure this is a hexadecimal character.
+            acceptCurrent(context);
+            setCurrentTokenType(context, LEX_HEXA_INTEGER);
+            // Scan one or more hexadecimal characters.
+            if (!isHexa(getCurrentCharacter(context)))
+            {
+                ERR_raiseError(E_LEX_INVALID_HEXA_LITERAL);
+                return 0;
+            }
+            while (isHexa(getCurrentCharacter(context)))
+            {
+                acceptCurrent(context);
+            }
+            return 1;
+        }
+        // Its not hexadecimal its an octal.
+        // So read zero or more octal numbers.
+        setCurrentTokenType(context, LEX_OCTAL_INTEGER);
+        while (isOctal(getCurrentCharacter(context)))
+        {
+            acceptCurrent(context);
+        }
+        // If the next character cannot be a part of a decimal integer
+        // or floating point number. The current token is accepted as an octal number.
+        c = getCurrentCharacter(context);
+        if
+        (
+            !isDecimal(c) &&
+            (c != '.') &&
+            ((c | 0x20) != 'e')
+        )
+        {
+            return 1;
+        }
     }
-    if (!c)
+    // At this point the number is decimal at least.
+    setCurrentTokenType(context, LEX_DECIMAL_INTEGER);
+    // read one or more decimal digits. If we tried octal mode we already read
+    // at least one 0.
+    if (!octalTried && !isDecimal(getCurrentCharacter(context)))
     {
-        ERR_raiseError(E_LEX_MISSING_EXPONENTIAL_PART);
+        ERR_raiseError(E_LEX_INVALID_DECIMAL_NUMBER);
         return 0;
     }
-    return 1;
-}
-
-static int scanFractionalPart(struct LexerContext *context)
-{
-    char c;
     while (isDecimal(getCurrentCharacter(context)))
-    {
-        acceptCurrent(context);
-    }
-    c = getCurrentCharacter(context);
-    if ((c | 0x20) == 'e')
-    {
-        acceptCurrent(context);
-        setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return scanExponentialPart(context);
-    }
-    return 1;
-}
-
-static int scanDecimalNumber(struct LexerContext *context)
-{
-    char c;
-    while (isDecimal(getCurrentCharacter(context)))
-    {
-        acceptCurrent(context);
-    }
-    c = getCurrentCharacter(context);
-    if (c == '.')
-    {
-        acceptCurrent(context);
-        setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return scanFractionalPart(context);
-    }
-    else if ((c | 0x20) == 'e')
-    {
-        acceptCurrent(context);
-        setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return scanExponentialPart(context);
-    }
-    return 1;
-}
-
-static int scanHexadecimalPart(struct LexerContext *context)
-{
-    while(isHexa(getCurrentCharacter(context)))
     {
         acceptCurrent(context);
     }
     if (getCurrentCharacter(context) == '.')
     {
-        ERR_raiseError(E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED);
-        return 0;
-    }
-    return 1;
-}
-
-static int scanOctalNumber(struct LexerContext *context)
-{
-    char c;
-    if (getCurrentCharacter(context) == '0')
-    {
-        acceptCurrent(context);
-    }
-    else
-    {
-        ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
-        return 0;
-    }
-    if ((getCurrentCharacter(context) | 0x20) == 'x')
-    {
-        acceptCurrent(context);
-        setCurrentTokenType(context, LEX_HEXA_NUMBER);
-        return scanHexadecimalPart(context);
-    }
-    while (isOctal(getCurrentCharacter(context)))
-    {
-        acceptCurrent(context);
-    }
-    c = getCurrentCharacter(context);
-    if (isDecimal(c))
-    {
-        setCurrentTokenType(context, LEX_DECIMAL_NUMBER);
-        return scanDecimalNumber(context);
-    }
-    else if (c == '.')
-    {
-        acceptCurrent(context);
+        // Period read, fraction part coming with at least one decimal number
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return scanFractionalPart(context);
-    }
-    else if ((c | 0x20) == 'e')
-    {
         acceptCurrent(context);
+        if (!isDecimal(getCurrentCharacter(context)))
+        {
+            ERR_raiseError(E_LEX_INVALID_DECIMAL_NUMBER);
+            return 0;
+        }
+        while (isDecimal(getCurrentCharacter(context)))
+        {
+            acceptCurrent(context);
+        }
+    }
+    if ((getCurrentCharacter(context) | 0x20) == 'e')
+    {
+        // E read. Exponential part coming.
         setCurrentTokenType(context, LEX_FLOAT_NUMBER);
-        return scanExponentialPart(context);
+        acceptCurrent(context);
+        // accept an optional sign.
+        switch (getCurrentCharacter(context))
+        {
+            case '-':
+            case '+':
+                acceptCurrent(context);
+            break;
+            default:
+            break;
+        }
+        // accept at least one decimal numbers.
+        if (!isDecimal(getCurrentCharacter(context)))
+        {
+            ERR_raiseError(E_LEX_INVALID_DECIMAL_NUMBER);
+            return 0;
+        }
+        while (isDecimal(getCurrentCharacter(context)))
+        {
+            acceptCurrent(context);
+        }
     }
     return 1;
 }
 
-static int scanNumber(struct LexerContext *context)
-{
-    char c = getCurrentCharacter(context);
-    if (c == '0')
-    {
-        setCurrentTokenType(context, LEX_OCTAL_NUMBER);
-        if (!scanOctalNumber(context)) return 0;
-    }
-    else if (('1' <= c) && (c <= '9'))
-    {
-        if (!scanDecimalNumber(context)) return 0;
-    }
-    else
-    {
-        ERR_raiseError(E_LEX_IMPOSSIBLE_ERROR);
-        return 0;
-    }
-    return 1;
-}
-
+/**
+ * Scans a string.
+ * string ::= '"' non-"* '"'
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
 static int scanString(struct LexerContext *context)
 {
     char c = getCurrentCharacter(context);
@@ -466,6 +593,13 @@ static int scanString(struct LexerContext *context)
     return 1;
 }
 
+/**
+ * The main function that does the tokenization.
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
 static int doTokenization(struct LexerContext *context)
 {
     while (getCurrentCharacter(context))
@@ -474,22 +608,26 @@ static int doTokenization(struct LexerContext *context)
 
         if (isWhitespace(c))
         {
+            // Ignore any whitespace.
             ignoreCurrent(context);
         }
         else if (isLetter(c))
         {
+            // If read letter try to scan an identifier.
             startNewToken(context, LEX_IDENTIFIER);
             if (!scanIdentifier(context)) return 0;
             finishCurrentToken(context);
         }
         else if (isDecimal(c))
         {
-            startNewToken(context, LEX_DECIMAL_NUMBER);
+            // If read an integer, try to scan a decimal number.
+            startNewToken(context, LEX_DECIMAL_INTEGER);
             if (!scanNumber(context)) return 0;
             finishCurrentToken(context);
         }
         else
         {
+            // Special character handling goes here.
             switch (c)
             {
                 case ';':
@@ -527,7 +665,7 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     if (isDecimal(getCurrentCharacter(context)))
                     {
-                        setCurrentTokenType(context, LEX_DECIMAL_NUMBER);
+                        // If a decimal digit follows directly the -. We read a negative number.
                         if (!scanNumber(context)) return 0;
                     }
                     finishCurrentToken(context);
@@ -553,14 +691,17 @@ static int doTokenization(struct LexerContext *context)
                     finishCurrentToken(context);
                 break;
                 case '/':
+                    // '/' means division operator
                     startNewToken(context, LEX_DIVISION_OPERATOR);
                     acceptCurrent(context);
                     if (getCurrentCharacter(context) == '*')
                     {
+                        // '/*' means the beginning of the block comment.
                         setCurrentTokenType(context, LEX_BLOCK_COMMENT);
                         acceptCurrent(context);
                         if (getCurrentCharacter(context) == '*')
                         {
+                            // '/**' is a documentation block comment.
                             setCurrentTokenType(context, LEX_DOCUMENTATION_BLOCK_COMMENT);
                             acceptCurrent(context);
                         }
@@ -571,6 +712,7 @@ static int doTokenization(struct LexerContext *context)
                                 acceptCurrent(context);
                                 if (getCurrentCharacter(context) == '/')
                                 {
+                                    // '*/' character sequence closes the comment.
                                     acceptCurrent(context);
                                     break;
                                 }
@@ -583,20 +725,24 @@ static int doTokenization(struct LexerContext *context)
                     }
                     else if (getCurrentCharacter(context) == '/')
                     {
+                        // '//' starts an EOL comment.
                         setCurrentTokenType(context, LEX_EOL_COMMENT);
                         acceptCurrent(context);
                         if (getCurrentCharacter(context) == '/')
                         {
+                            // '///' starts an EOL documentation comment
                             setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_COMMENT);
                             acceptCurrent(context);
                         }
                         if (getCurrentCharacter(context) == '<')
                         {
+                            // '//<' starts an EOL documentation back comment.
                             setCurrentTokenType(context, LEX_DOCUMENTATION_EOL_BACK_COMMENT);
                             acceptCurrent(context);
                         }
                         while ((getCurrentCharacter(context) != '\n') && (getCurrentCharacter(context) != '\r'))
                         {
+                            // read characters until we reached end of the line.
                             acceptCurrent(context);
                         }
                     }
@@ -624,12 +770,14 @@ static int doTokenization(struct LexerContext *context)
                     {
                         case '=':
                         {
+                            // >=
                             setCurrentTokenType(context, LEX_GREATER_EQUAL_THAN);
                             acceptCurrent(context);
                         }
                         break;
                         case '>':
                         {
+                            // >>
                             setCurrentTokenType(context, LEX_SHIFT_RIGHT);
                             acceptCurrent(context);
                         }
@@ -644,12 +792,14 @@ static int doTokenization(struct LexerContext *context)
                     {
                         case '=':
                         {
+                            // <=
                             setCurrentTokenType(context, LEX_LESS_EQUAL_THAN);
                             acceptCurrent(context);
                         }
                         break;
                         case '<':
                         {
+                            // <<
                             setCurrentTokenType(context, LEX_SHIFT_LEFT);
                             acceptCurrent(context);
                         }
@@ -662,6 +812,7 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     if (getCurrentCharacter(context) == '=')
                     {
+                        // == equality
                         acceptCurrent(context);
                     }
                     else
@@ -676,6 +827,7 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     while (isDecimal(getCurrentCharacter(context)))
                     {
+                        // #32 is for space for example
                         acceptCurrent(context);
                     }
                     finishCurrentToken(context);
@@ -685,6 +837,7 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     if (getCurrentCharacter(context) == '=')
                     {
+                        // !=
                         acceptCurrent(context);
                     }
                     else
@@ -699,11 +852,13 @@ static int doTokenization(struct LexerContext *context)
                     acceptCurrent(context);
                     if (getCurrentCharacter(context) == '=')
                     {
+                        // :=
                         setCurrentTokenType(context, LEX_ASSIGN_OPERATOR);
                         acceptCurrent(context);
                     }
                     else if (getCurrentCharacter(context) == ':')
                     {
+                        // ::
                         setCurrentTokenType(context, LEX_SCOPE_SEPARATOR);
                         acceptCurrent(context);
                     }
@@ -729,12 +884,20 @@ void LEX_cleanUpLexerResult(struct LEX_LexerResult *lexerResult)
     free(lexerResult->tokens);
 }
 
+/**
+ * Merges adjacent strings and character literals into a single token.
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success.
+ */
 static void mergeAdjacentStrings(struct LexerContext *context)
 {
     int i, j = 0;
     int inSeriesOfStrings = 0;
     struct LEX_LexerToken *stringToken;
     struct LEX_LexerResult *result = context->result;
+    // For each token.
     for (i = 0; i < context->tokenCount; i++)
     {
         struct LEX_LexerToken *token = &result->tokens[i];
@@ -744,13 +907,19 @@ static void mergeAdjacentStrings(struct LexerContext *context)
             case LEX_STRING:
             case LEX_CHARACTER:
             {
+                // On string or character.
                 if (!inSeriesOfStrings)
                 {
+                    // If we are not in series of strings
+                    // start one
                     inSeriesOfStrings = 1;
+                    // Remember the first token in the series.
                     stringToken = token;
                 }
                 else
                 {
+                    // If we are in a series of strings, mark the current token
+                    // deleted.
                     token->tokenType = LEX_SPEC_DELETED;
                 }
             }
@@ -758,16 +927,21 @@ static void mergeAdjacentStrings(struct LexerContext *context)
             default:
                 if (inSeriesOfStrings)
                 {
+                    // If we are in a series of strings but read a non-string.
+                    // Update the end position of the first token.
                     inSeriesOfStrings = 0;
                     stringToken->endColumn = previousToken->endColumn;
                     stringToken->endLine = previousToken->endLine;
+                    // update the length of the first token.
                     stringToken->length =
                         (size_t)(previousToken->start + previousToken->length) -
                         (size_t)(stringToken->start);
+                    // Now the first token's string contains all adjacent strings.
                 }
         }
         previousToken = token;
     }
+    // Now delete all previously marked tokens.
     i = 0;
     j = 0;
     for (i = 0; i < context->tokenCount; i++)

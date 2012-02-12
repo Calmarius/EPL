@@ -1,6 +1,29 @@
+/**
+* @file semantic.c
+ * This module does the semantic checking of the syntax tree.
+ *
+ * The following functions are implemented:
+ *
+ * - Checking of consistency: every node has the appropriate amount of child nodes.
+ *   If the tree is inconsistent, an E_SMC_CORRUPT_SYNTAX_TREE error is raised.
+ *   Not all nodes are checked.
+ * - Refactoring of expression nodes. The syntax checker only recognizes the expressions.
+ *   But doesn't consider the precedence. This module refactors the expression nodes.
+ * - Checks parameters count of operator functions (it must be 2).
+ * - Checks breaks and continues. Assigns the node id of the statement they break or continue
+ *   to them.
+ * - Builds symbol table.
+ * - Checks symbol declarations reports errors or duplicates.
+ * - Checks symbol usage, reports errors on undefined or ambiguous symbols.
+ * - Deletes qualified name nodes and assigns the definer node id to their parents.
+ *
+ * The module is not complete.
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+
+
 
 #include "semantic.h"
 #include "syntax.h"
@@ -53,9 +76,15 @@ enum PrecedenceLevel
     PREC_ACCESSOR ///< record access operatior.
 };
 
-#define SLO_LOCAL_ONLY 0
-#define SLO_CHECK_PARENT_SCOPES 1
-#define SLO_CHECK_USED_NAMESPACES 2
+/**
+ * This enum defines flags for the lookupSymbol function.
+ */
+enum LookupOptions
+{
+    SLO_LOCAL_ONLY = 0, ///< Checks only the given scope
+    SLO_CHECK_PARENT_SCOPES = 1, ///< Check parent scopes
+    SLO_CHECK_USED_NAMESPACES = 2 ///< Check used namespaces.
+};
 
 static int checkStatement(struct SemanticContext *context);
 static int checkDeclaration(struct SemanticContext *context);
@@ -1367,9 +1396,16 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
     free(result);
 }
 
-static int checkTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTreeNode *current)
+/**
+ * Sets the type info of a term.
+ *
+ * @param node The term node no set the info on.
+ *
+ * @return Nonzero on success.
+ */
+static int setTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTreeNode *node)
 {
-    struct STX_NodeAttribute *attr = STX_getNodeAttribute(current);
+    struct STX_NodeAttribute *attr = STX_getNodeAttribute(node);
     switch (attr->termAttributes.termType)
     {
         case STX_TT_SIMPLE:
@@ -1377,9 +1413,9 @@ static int checkTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTre
             struct STX_TypeInformation *typeInfo = &attr->typeInformation;
             switch (attr->termAttributes.tokenType)
             {
-                case LEX_OCTAL_NUMBER:
-                case LEX_HEXA_NUMBER:
-                case LEX_DECIMAL_NUMBER:
+                case LEX_OCTAL_INTEGER:
+                case LEX_HEXA_INTEGER:
+                case LEX_DECIMAL_INTEGER:
                     typeInfo->metaType = STX_TYT_SIMPLE;
                     typeInfo->bitCount = 0;
                     typeInfo->attribs = "";
@@ -1414,6 +1450,17 @@ static int checkTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTre
     return 1;
 }
 
+/**
+ * Checks expression node.
+ *
+ * First it finds declaration nodes of the qualified names and reorganizes the the expression tree so
+ * a postorder transversal on it can be used to calculate the result.
+ * Second it assigns typeinfo the terms.
+ *
+ * @param exprNode The expression node to check.
+ *
+ * @return Nonzero on success. The appropriate error is raised.
+ */
 static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTreeNode *exprNode)
 {
     struct STX_TreeIterator iterator;
@@ -1458,7 +1505,7 @@ static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTre
         switch (current->nodeType)
         {
             case STX_TERM:
-                if (!checkTypeOfTerm(context, current)) return 0;
+                if (!setTypeOfTerm(context, current)) return 0;
             break;
             default:
             break;
@@ -1467,6 +1514,11 @@ static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTre
     return 1;
 }
 
+/**
+ * Transverses the syntax tree and checks the expressions.
+ *
+ * @return Nonzero on success.
+ */
 static int checkExpressions(struct SemanticContext *context)
 {
     struct STX_TreeIterator iterator;
@@ -1492,6 +1544,9 @@ static int checkExpressions(struct SemanticContext *context)
     return 1;
 }
 
+/**
+ * Transverses the syntax tree and assigns scope ids to all nodes.
+ */
 static void setScopeIdsOnAllNodes(struct SemanticContext *context)
 {
     struct STX_TreeIterator iterator;

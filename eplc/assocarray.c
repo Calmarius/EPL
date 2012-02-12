@@ -1,3 +1,11 @@
+/**
+ * Associative array module. Used for symbol lookup.
+ *
+ * Uses a B-tree.
+ *
+ * Uses string indexes and stores void* pointers.
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -151,6 +159,16 @@ static void checkBlockForSplit(
 
 }
 
+/**
+ * Compares two keys.
+ *
+ * @param [in] a,b The two key-value pair whose key needs to be compared.
+ *
+ * @return
+ *      - Zero if the two keys are equal.
+ *      - Negative if 'a' is less.
+ *      - Positive if 'a' is bigger.
+ */
 int compareKey(
     const struct ASSOC_KeyValuePair *a,
     const struct ASSOC_KeyValuePair *b)
@@ -579,6 +597,17 @@ int ASSOC_remove(struct ASSOC_Array *array, const char *key, int keyLength)
     return removeFromBlock(array, array->root, key, keyLength, 0);
 }
 
+/**
+ * Finds an element in a block. If not found it recursively tries the appropriate child
+ * blocks too.
+ *
+ * @param [in] block The block to search in.
+ * @param [in] key Pointer to the key string.
+ * @param [in] keyLength Length of the key string.
+ *
+ * @return Returns the payload (void*) of the found element. Returns null if
+ *      the key is not found.
+ */
 static void *findInBlock(struct AssocBlock *block, const char *key, int keyLength)
 {
     int foundPos;

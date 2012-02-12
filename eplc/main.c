@@ -52,9 +52,9 @@ const char *tokenTypeToString(enum LEX_TokenType type)
         STRINGCASE(LEX_ASSIGN_OPERATOR)
         STRINGCASE(LEX_BUILT_IN_TYPE)
         STRINGCASE(LEX_FLOAT_NUMBER)
-        STRINGCASE(LEX_HEXA_NUMBER)
-        STRINGCASE(LEX_DECIMAL_NUMBER)
-        STRINGCASE(LEX_OCTAL_NUMBER)
+        STRINGCASE(LEX_HEXA_INTEGER)
+        STRINGCASE(LEX_DECIMAL_INTEGER)
+        STRINGCASE(LEX_OCTAL_INTEGER)
         STRINGCASE(LEX_ADD_OPERATOR)
         STRINGCASE(LEX_LEFT_PARENTHESIS)
         STRINGCASE(LEX_RIGHT_PARENTHESIS)
@@ -481,6 +481,14 @@ void compileFile(const char *fileName, NotificationCallback callback)
         else if (ERR_catchError(E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED))
         {
             sprintf(buffer, "Hexa floating point is not allowed.\n");
+        }
+        else if (ERR_catchError(E_LEX_INVALID_HEXA_LITERAL))
+        {
+            sprintf(buffer, "Invalid hexa literal.\n");
+        }
+        else if (ERR_catchError(E_LEX_INVALID_DECIMAL_NUMBER))
+        {
+            sprintf(buffer, "Invalid decimal number.\n");
         }
         callback(buffer);
         goto cleanup;

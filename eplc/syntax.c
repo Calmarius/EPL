@@ -329,9 +329,9 @@ static int isNumber(const struct LEX_LexerToken *token)
 {
     switch (token->tokenType)
     {
-        case LEX_OCTAL_NUMBER:
-        case LEX_DECIMAL_NUMBER:
-        case LEX_HEXA_NUMBER:
+        case LEX_OCTAL_INTEGER:
+        case LEX_DECIMAL_INTEGER:
+        case LEX_HEXA_INTEGER:
         case LEX_FLOAT_NUMBER:
             return 1;
         default:
@@ -701,9 +701,9 @@ static int parseSimpleStatement(struct SyntaxContext *context)
 static int isIntegerNumberToken(enum LEX_TokenType tokenType)
 {
     return
-        (tokenType == LEX_DECIMAL_NUMBER) ||
-        (tokenType == LEX_OCTAL_NUMBER) ||
-        (tokenType == LEX_HEXA_NUMBER);
+        (tokenType == LEX_DECIMAL_INTEGER) ||
+        (tokenType == LEX_OCTAL_INTEGER) ||
+        (tokenType == LEX_HEXA_INTEGER);
 }
 
 static int getIntegerValue(const struct LEX_LexerToken *token)
@@ -715,13 +715,13 @@ static int getIntegerValue(const struct LEX_LexerToken *token)
 
     switch (token->tokenType)
     {
-        case LEX_DECIMAL_NUMBER:
+        case LEX_DECIMAL_INTEGER:
             radix = 10;
         break;
-        case LEX_OCTAL_NUMBER:
+        case LEX_OCTAL_INTEGER:
             radix = 8;
         break;
-        case LEX_HEXA_NUMBER:
+        case LEX_HEXA_INTEGER:
             current += 2; // skip 0x
             radix = 16;
         break;

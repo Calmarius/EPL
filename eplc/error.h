@@ -1,6 +1,9 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+/**
+ * An enum of error codes
+ */
 enum ERR_ErrorCode
 {
     E_OK = 0,
@@ -12,6 +15,8 @@ enum ERR_ErrorCode
     E_LEX_MISSING_EXPONENTIAL_PART,
     E_LEX_HEXA_FLOATING_POINT_NOT_ALLOWED,
     E_LEX_QUOTE_EXPECTED,
+    E_LEX_INVALID_HEXA_LITERAL,
+    E_LEX_INVALID_DECIMAL_NUMBER,
 
     E_STX_MODULE_EXPECTED,
     E_STX_MODULE_TYPE_EXPECTED,
@@ -70,9 +75,27 @@ enum ERR_ErrorCode
     E_SMC_AMBIGUOS_NAME,
 };
 
+/**
+ * Raises an error.
+ *
+ * @param errorCode the error code to raise.
+ */
 void ERR_raiseError(enum ERR_ErrorCode errorCode);
+/**
+ * Catches an error and clears it.
+ *
+ * @param errorCode The error to catch.
+ *
+ * @return Nonzero if the error was previously raised, zero otherwise.
+ */
 int ERR_catchError(enum ERR_ErrorCode errorCode);
+/**
+ * Returns nonzero if there was an error.
+ */
 int ERR_isError();
+/**
+ * Clears all errors previously raised.
+ */
 void ERR_clearErrors();
 
 #endif // ERROR_H
