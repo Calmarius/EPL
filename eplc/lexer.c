@@ -1,4 +1,5 @@
 /**
+ * @file
  * Lexer module
  *
  * Generates tokens from the source code.
@@ -955,6 +956,13 @@ static void mergeAdjacentStrings(struct LexerContext *context)
     context->tokenCount = j;
 }
 
+/**
+ * Creates a new binary string.
+ *
+ * Binary strings store the binary representations of the string literals.
+ *
+ * @param [in,out] context context.
+ */
 static void createBinaryString(struct LexerContext *context)
 {
     assert(!context->currentStringAllocated);
@@ -962,7 +970,13 @@ static void createBinaryString(struct LexerContext *context)
     context->currentString = malloc(context->currentStringAllocated * sizeof(char));
     context->currentStringLength = 0;
 }
-
+/**
+ * Finalizes and saves the current binary string.
+ *
+ * @param context context.
+ * @param [out] string The string's address is saved here.
+ * @param [out] length The string's length is saved here.
+ */
 static void finalizeBinaryString(struct LexerContext *context, const char **string, int *length)
 {
     struct LEX_LexerResult *result = context->result;
@@ -989,6 +1003,13 @@ static void finalizeBinaryString(struct LexerContext *context, const char **stri
 
 }
 
+/**
+ * Adds a single character to the current binary string.
+ *
+ * @param context context.
+ * @param c The character to add.
+ *
+ */
 static void addToBinaryString(struct LexerContext *context, char c)
 {
     assert(context->currentStringAllocated);
@@ -1000,6 +1021,14 @@ static void addToBinaryString(struct LexerContext *context, char c)
     }
     context->currentString[context->currentStringLength++] = c;
 }
+
+/**
+ * Adds an UTF-8 character to the current binary string.
+ *
+ * @param context context.
+ * @param ch The unicode code of the character to add
+ *
+ */
 
 static void addUtf8CharacterToBinaryString(struct LexerContext *context, int ch)
 {
@@ -1044,9 +1073,15 @@ static void addUtf8CharacterToBinaryString(struct LexerContext *context, int ch)
     }
 }
 
+/**
+ * Turns string literals to the binary form.
+ *
+ * @param context context.
+ */
 static void createBinaryStrings(struct LexerContext *context)
 {
     int i;
+    // For each token.
     for (i = 0; i < context->tokenCount; i++)
     {
         struct LEX_LexerToken *token;
@@ -1057,37 +1092,46 @@ static void createBinaryStrings(struct LexerContext *context)
 
         token = &context->result->tokens[i];
         if (token->tokenType != LEX_STRING) continue;
+        // At this point the current token is string.
         createBinaryString(context);
         for (c = token->start; c != token->start + token->length; c++)
         {
             if (*c == '\"')
             {
+                // " is the delimiter of strings. Switches inString mode.
                 inString = !inString;
                 continue;
             }
             if (inString)
             {
+                // We are in string, add the the character to the binary form.
                 addToBinaryString(context, *c);
             }
             else
             {
+                // We are not in string.
                 if (inCharacter)
                 {
+                    // if we are in a character literal.
                     if (('0' <= *c) && (*c <= '9'))
                     {
+                        // Read a digit. Add it to the character code.
                         characterCode *= 10;
                         characterCode += *c - '0';
                     }
                     else
                     {
+                        // Read a non-digit. Finish character reading. Save the character.
                         inCharacter = 0;
                         addUtf8CharacterToBinaryString(context, characterCode);
                     }
                 }
                 if (!inCharacter)
                 {
+                    // Not in character reading mode
                     if (*c == '#')
                     {
+                        // If read # enter character reading mode.
                         inCharacter = 1;
                         characterCode = 0;
                     }
@@ -1096,10 +1140,12 @@ static void createBinaryStrings(struct LexerContext *context)
         }
         if (inCharacter)
         {
+            // If we are in character reading mode after finished reading
+            // the string, save the character.
             addUtf8CharacterToBinaryString(context, characterCode);
         }
+        // Finished the binary string, save it the token.
         finalizeBinaryString(context, &token->start, &token->length);
-
     }
 }
 

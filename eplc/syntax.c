@@ -1558,7 +1558,7 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
 
 /**
  * PlatfromDeclaration :=
- * 'platform' string (, string)* '{' <Declaration>* '}'
+ * 'for' string (, string)* '{' <Declaration>* '}'
  */
 static int parsePlatformDeclaration(struct SyntaxContext *context)
 {
