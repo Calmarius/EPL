@@ -1,3 +1,9 @@
+/**
+ * This module builds a raw syntax tree from the tokens using recursive descent parsing.
+ *
+ * Semantics are not checked by this module. So syntax tree can be non-sense after this phase.
+ */
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -6,24 +12,38 @@
 #include "lexer.h"
 #include "error.h"
 
-
+/**
+ * Stores data about the parsing.
+ */
 struct SyntaxContext
 {
-    struct STX_SyntaxTree *tree;
+    struct STX_SyntaxTree *tree; ///< Stores the syntax tree being built.
 
-    const struct LEX_LexerToken *tokens;
-    int tokenCount;
-    int tokensRemaining;
+    const struct LEX_LexerToken *tokens; ///< The array with the tokens.
+    int tokenCount; ///< Count of tokens in that array.
+    int tokensRemaining; ///< Remaining tokens
 
-    const struct LEX_LexerToken  *current;
-    int currentNodeIndex;
+    const struct LEX_LexerToken  *current; ///< current token
+    int currentNodeIndex; ///< Index of the curent node.
 
-    const struct LEX_LexerToken *latestComment;
+    const struct LEX_LexerToken *latestComment; ///< The latest comment token.
 };
 
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree);
 static void initializeNode(struct STX_SyntaxTreeNode *node);
 
+/**
+ * Recursive function of the preorder transversal.
+ *
+ * @param [in,out] tree The tree to transverse.
+ * @param [in] level The level of the recursion.
+ * @param [in,out] node The current node.
+ * @param [in] callback A callback function which is caller for every node.
+ * @param [in] userData an user profiled data, will be passed to the callback.
+ *
+ * @retval 0 if callback returns 0. This also stops the transversal.
+ * @retval 1 otherwise.
+ */
 static int preorderStep(
     struct STX_SyntaxTree *tree,
     int level,
@@ -50,7 +70,11 @@ int STX_transversePreorder(struct STX_SyntaxTree *tree, STX_TransverseCallback c
     return preorderStep(tree, 0, node, callback, userData);
 }
 
-
+/**
+ * Initializes the syntax tree.
+ *
+ * @param [in,out] tree The tree to initialize.
+ */
 static void initializeSyntaxTree(struct STX_SyntaxTree *tree)
 {
     struct STX_SyntaxTreeNode *node;
@@ -87,6 +111,15 @@ void STX_appendChild(
     node->lastChildIndex = child->id;
 }
 
+/**
+ * Allocates node from the tree's node pool.
+ *
+ * @param [in,out] tree The tree to allocate the node from.
+ *
+ * @return The allocated node:
+ *
+ * @todo Handle memory allocation errors.
+ */
 static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
 {
     struct STX_SyntaxTreeNode *node;
@@ -113,32 +146,11 @@ static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
     return node;
 }
 
-/*static int allocateAttribute(struct STX_SyntaxTree *tree)
-{
-    struct STX_NodeAttribute *attribute;
-    if (tree->attributeCount == tree->attributesAllocated)
-    {
-        if (tree->attributes)
-        {
-            tree->attributesAllocated <<= 1;
-        }
-        else
-        {
-            tree->attributesAllocated = 10;
-        }
-        tree->attributes = realloc(
-            tree->attributes, tree->attributesAllocated * sizeof(struct STX_NodeAttribute));
-    }
-    attribute = &tree->attributes[tree->attributeCount];
-    memset(attribute, 0, sizeof(*attribute));
-    attribute->allocated = 1;
-    attribute->id = tree->attributeCount;
-    attribute->belongsTo = tree;
-    attribute->symbolDefinitionNodeId = -1;
-    tree->attributeCount++;
-    return attribute->id;
-}*/
-
+/**
+ * Initializes a node
+ *
+ * @param node The node to initialize.
+ */
 static void initializeNode(struct STX_SyntaxTreeNode *node)
 {
     node->parentIndex = -1;
@@ -155,11 +167,22 @@ static void initializeNode(struct STX_SyntaxTreeNode *node)
     node->attribute.symbolDefinitionNodeId = -1;
 }
 
+/**
+ * @param context context
+ *
+ * @return The current token.
+ */
 static const struct LEX_LexerToken *getCurrentToken(struct SyntaxContext *context)
 {
     return context->current;
 }
 
+/**
+ * @param context context
+ *
+ * @return The type of the current token. LEX_SPEC_EOF if there is no
+ *      current token (read past the last)
+ */
 static enum LEX_TokenType getCurrentTokenType(struct SyntaxContext *context)
 {
     if (!context->current)
@@ -169,6 +192,12 @@ static enum LEX_TokenType getCurrentTokenType(struct SyntaxContext *context)
     return context->current->tokenType;
 }
 
+/**
+ * @param tokenType subject.
+ *
+ * @retval true The token is a comment token.
+ * @retval false otherwise.
+ */
 static int isCommentTokenType(enum LEX_TokenType tokenType)
 {
     switch (tokenType)
@@ -189,6 +218,11 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
 static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *context);
 static void ascendToParent(struct SyntaxContext *context);
 
+/**
+ * Advances to the next token, and makes it current.
+ *
+ * @param [in,out] context The context.
+ */
 static void advance(struct SyntaxContext *context)
 {
     assert(context->current);
@@ -204,6 +238,12 @@ static void advance(struct SyntaxContext *context)
     }
 }
 
+/**
+ * @param [in] tokenType subject
+ *
+ * @retval true The tokenType is a documentation comment token type.
+ * @retval false otherwise.
+ */
 static int isForwardDocumentationCommentType(enum LEX_TokenType tokenType)
 {
     switch (tokenType)
@@ -217,6 +257,12 @@ static int isForwardDocumentationCommentType(enum LEX_TokenType tokenType)
     return 0;
 }
 
+/**
+ * @param [in] tokenType subject
+ *
+ * @retval true The tokenType is a documentation back comment token type.
+ * @retval false otherwise.
+ */
 static int isBackDocumentationCommentType(enum LEX_TokenType tokenType)
 {
     switch (tokenType)
@@ -229,17 +275,31 @@ static int isBackDocumentationCommentType(enum LEX_TokenType tokenType)
     return 0;
 }
 
+/**
+ * @param [in] context context.
+ *
+ * @return The current node.
+ */
 static struct STX_SyntaxTreeNode *getCurrentNode(struct SyntaxContext *context)
 {
     return &context->tree->nodes[context->currentNodeIndex];
 }
 
+/**
+ * Skips comments. Documentation comments are set as attributes on the
+ * appropriate nodes.
+ *
+ * @param [in,out] context context.
+ */
 static void skipComments(struct SyntaxContext *context)
 {
+    // Skip tokens while the current is a comment.
     while (isCommentTokenType(getCurrentTokenType(context)))
     {
         if (isForwardDocumentationCommentType(getCurrentTokenType(context)))
         {
+            // On forward documentation the latest comment, it will set as attribute
+            // on the next node.
             context->latestComment = getCurrentToken(context);
         }
         else if (isBackDocumentationCommentType(getCurrentTokenType(context)))
@@ -248,15 +308,22 @@ static void skipComments(struct SyntaxContext *context)
             struct STX_NodeAttribute *attr;
             const struct LEX_LexerToken *token = getCurrentToken(context);
 
+            // Back comments are set as attribute on the current node.
             attr = getCurrentAttribute(context);
             currentNode->attribute = *attr;
             attr->comment = token->start;
             attr->commentLength = token->length;
         }
+        // Move to the next token.
         advance(context);
     }
 }
 
+/**
+ * Accepts current token, moves to the next token (after skipped the comment tokens)
+ *
+ * @param context context.
+ */
 static void acceptCurrent(struct SyntaxContext *context)
 {
     struct STX_SyntaxTreeNode *node = getCurrentNode(context);
@@ -267,6 +334,19 @@ static void acceptCurrent(struct SyntaxContext *context)
     skipComments(context);
 }
 
+/**
+ * Expects the given token type. If the current token is not the expected one
+ * it raises an error. If it's of the expected type, accepts it.
+ *
+ * It can raise E_STX_UNEXPECTED_END_OF_FILE if no there are no more tokens.
+ *
+ * @param [in,out] context The context.
+ * @param [in] type the expected token type.
+ * @param [in] errorToRaise The error code to raise if the token type is not as expected.
+ *
+ * @retval 1 if the current token is the same type as expected.
+ * @retval 0 on error, and the given error code is raised.
+ */
 static int expect(
     struct SyntaxContext *context,
     enum LEX_TokenType type,
@@ -278,33 +358,52 @@ static int expect(
 
     if (!token)
     {
+        // We are at the end of file.
         ERR_raiseError(E_STX_UNEXPECTED_END_OF_FILE);
         return 0;
     }
     if (token->tokenType == type)
     {
+        // It's of the expected type, so accept it.
         acceptCurrent(context);
         return 1;
     }
     else
     {
+        // Not the expected one: raise error.
         ERR_raiseError(errorToRaise);
         return 0;
     }
 }
 
+/**
+ * Sets the current token's parent as current.
+ *
+ * This function usually called at the end of the expansion
+ * of a grammar rule.
+ *
+ * @param context context.
+ */
 static void ascendToParent(struct SyntaxContext *context)
 {
     struct STX_SyntaxTreeNode *node = getCurrentNode(context);
     struct STX_SyntaxTreeNode *parentNode;
     assert(node->parentIndex != -1);
     context->currentNodeIndex = getCurrentNode(context)->parentIndex;
-//    context->currentAttributeIndex = getCurrentNode(context)->attributeIndex; //< getcurrent is now the parentnode.
     parentNode = getCurrentNode(context);
     parentNode->endColumn = node->endColumn;
     parentNode->endLine = node->endLine;
 }
 
+/**
+ * Appends new child to the current node and makes it current.
+ *
+ * This function is usually called at the beginning of the expansion
+ * of a grammar rule.
+ *
+ * @param [in,out] context context.
+ * @param [in] type the type of the new node.
+ */
 static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type)
 {
     struct STX_SyntaxTreeNode *node = allocateNode(context->tree);
@@ -317,6 +416,7 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
     context->currentNodeIndex = node->id;
     if (context->latestComment)
     {
+        // Sets the comment attribute on the node, if preceded by a comment token.
         struct STX_NodeAttribute *attr;
         attr = getCurrentAttribute(context);
         attr->comment = context->latestComment->start;
@@ -325,6 +425,12 @@ static void descendNewNode(struct SyntaxContext *context, enum STX_NodeType type
     }
 }
 
+/**
+ * @param token subject.
+ *
+ * @retval true if the token is number.
+ * @retval false if not.
+ */
 static int isNumber(const struct LEX_LexerToken *token)
 {
     switch (token->tokenType)
@@ -340,6 +446,12 @@ static int isNumber(const struct LEX_LexerToken *token)
     return 0;
 }
 
+/**
+ * @param token subject.
+ *
+ * @retval true The token is an unary operator
+ * @retval false otherwise.
+ */
 static int isUnaryOperator(const struct LEX_LexerToken *token)
 {
     switch (token->tokenType)
@@ -358,9 +470,16 @@ static int isUnaryOperator(const struct LEX_LexerToken *token)
 static int parseExpression(struct SyntaxContext *context);
 
 /**
-* <ArgumentList> ::=
-* '(' <Expression>? (',' <Expression>)* ')'
-*/
+ * Parses argument list. The argument list is used in function calls.
+ *
+ * <ArgumentList> ::=
+ * '(' <Expression>? (',' <Expression>)* ')'
+ *
+ * @param context context
+ *
+ * @return Nonzero on success, zero on error.
+ *
+ */
 static int parseArgumentList(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_ARGUMENT_LIST);
@@ -382,23 +501,47 @@ static int parseArgumentList(struct SyntaxContext *context)
 
 static int parseType(struct SyntaxContext *context);
 
+/**
+ * Gets the attribute of the current node.
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
+ */
 static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *context)
 {
-/*    assert(context->currentAttributeIndex >= 0);
-    return &context->tree->attributes[context->currentAttributeIndex];*/
     return &getCurrentNode(context)->attribute;
 }
 
 static int parseQualifiedName(struct SyntaxContext *context);
 
 /**
- * <Term> ::=
- * ( number |
- * <QualifiedName>  |
- * unaryOperator '(' <Expression> ')' |
- * '(' <Expression> ')' |
- * 'cast' <Type> '(' <Expression> ')' )
- * (( '[' <Expression> ']') | ( '(' <ArgumentList>? ')' ))*
+ * Parses a term of an expression.
+ *
+ * The term can be:
+ *
+ * - Number
+ * - Qualified name
+ * - expression in an unary operator.
+ * - Parenthesized expression
+ * - typecast expression
+ *
+ * Followed by an arbitrary amount of array subscript and argument lists.
+ *
+ *
+ @verbatim
+  <Term> ::=
+  ( number |
+  <QualifiedName>  |
+  unaryOperator '(' <Expression> ')' |
+  '(' <Expression> ')' |
+  'cast' <Type> '(' <Expression> ')' )
+  (( '[' <Expression> ']') | ( '(' <ArgumentList>? ')' ))*
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseTerm(struct SyntaxContext *context)
 {
@@ -429,12 +572,6 @@ static int parseTerm(struct SyntaxContext *context)
     else if (token->tokenType == LEX_IDENTIFIER)
     {
         if (!parseQualifiedName(context)) return 0;
-        /*attribute = getCurrentAttribute(context);
-        attribute->termAttributes.termType = STX_TT_SIMPLE;
-        attribute->termAttributes.tokenType = context->current->tokenType;
-        attribute->name = token->start;
-        attribute->nameLength = token->length;
-        acceptCurrent(context);*/
     }
     else if (isUnaryOperator(token))
     {
@@ -490,6 +627,12 @@ out:
     return 1;
 }
 
+/**
+ * @param token subject
+ *
+ * @retval Nonzero for infix operator tokens
+ * @retval 0 otherwise.
+ */
 static int isInfixOperator(const struct LEX_LexerToken *token)
 {
     switch (token->tokenType)
@@ -512,17 +655,10 @@ static int isInfixOperator(const struct LEX_LexerToken *token)
     return 0;
 }
 
+
 struct STX_NodeAttribute *STX_getNodeAttribute(struct STX_SyntaxTreeNode *node)
 {
     return &node->attribute;
-/*    if (node->attributeIndex == -1)
-    {
-        return 0;
-    }
-    else
-    {
-        return &node->belongsTo->attributes[node->attributeIndex];
-    }*/
 }
 
 void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
@@ -547,8 +683,20 @@ void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node
 }
 
 /**
- * <Expression> ::=
- * <Term> ((infixOperator | <QualifiedName>) <Term>)*
+ * Parses an expression.
+ *
+ * Expression is a sequence of terms separated by infix operators.
+ * Infix operator can be a predefined symbol or an user defined operator function.
+ * Precedence is not considered in this phase. (Semantic checker will reorder the tree)
+ *
+ @verbatim
+  <Expression> ::=
+  <Term> ((infixOperator | <QualifiedName>) <Term>)*
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseExpression(struct SyntaxContext *context)
 {
@@ -580,14 +728,21 @@ static int parseExpression(struct SyntaxContext *context)
         ascendToParent(context);
         if (!parseTerm(context)) return 0;
     }
-    //organizeExpressionTree(context);
     ascendToParent(context);
     return 1;
 }
 
 /**
- * <ReturnStatement> ::=
- * 'return' <Expression>? ';'
+ * Parses a return statement.
+ *
+@verbatim
+  <ReturnStatement> ::=
+  'return' <Expression>? ';'
+@endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseReturnStatement(struct SyntaxContext *context)
 {
@@ -608,8 +763,19 @@ static int parseBlock(struct SyntaxContext *context);
 
 
 /**
- * <IfStatement> ::=
- * 'if' '(' <Expression> ')' <Block> ('else' (<Block> | <IfStatement>) )?
+ * Parses an if statement.
+ *
+ * In this language { and } is mandatory in then and else blocks.
+ * The else branch can be another if statement.
+ *
+ @verbatim
+  <IfStatement> ::=
+  'if' '(' <Expression> ')' <Block> ('else' (<Block> | <IfStatement>) )?
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 
 static int parseIfStatement(struct SyntaxContext *context)
@@ -644,11 +810,25 @@ static int parseIfStatement(struct SyntaxContext *context)
 }
 
 /**
- * <LoopNextStatement> ::=
- * 'loop' <Block> ('next' <Block>)?
+ * Parses the loop-next statement.
  *
+ * This is an infinity loop language construct. Inorder to exit from it,
+ * you must use break statement. It can have optional next block which
+ * is executed after the statements in the loop block. The continue statement
+ * jumps to the next block.
+ *
+ * The 'loop' block should contain what you repeat, the 'next' block should
+ * contain the statements the prepare the next iteration like: i := i + 1;
+ *
+ @verbatim
+  <LoopNextStatement> ::=
+  'loop' <Block> ('next' <Block>)?
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
-
 static int parseLoopNextStatement(struct SyntaxContext *context)
 {
     struct STX_NodeAttribute *attr;
@@ -670,11 +850,34 @@ static int parseLoopNextStatement(struct SyntaxContext *context)
 
 static int parseVariableDeclaration(struct SyntaxContext *context);
 
+/**
+ * Sets the current node's type.
+ *
+ * @param context context.
+ * @param nodeType The new type of the node.
+ */
 static void setCurrentNodeType(struct SyntaxContext *context, enum STX_NodeType nodeType)
 {
     context->tree->nodes[context->currentNodeIndex].nodeType = nodeType;
 }
 
+/**
+ * Parses an expression statement.
+ *
+ * It can be an expression alone, but it can be an assignment too.
+ * If it's used as assignment the left side of the assignment must
+ * evaluate to an assignable reference the same type of the right side of
+ * the expression.
+ *
+ @verbatim
+ <ExpressionStatement> ::=
+ <Expression> (':=' <Expression>)? ';'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
+ */
 static int parseSimpleStatement(struct SyntaxContext *context)
 {
     descendNewNode(context, STX_EXPRESSION_STATEMENT);
@@ -698,6 +901,12 @@ static int parseSimpleStatement(struct SyntaxContext *context)
     return 1;
 }
 
+/**
+ * @param [in] tokenType subject
+ *
+ * @retval Nonzero if it's an integer number token type.
+ * @retval 0 otherwise.
+ */
 static int isIntegerNumberToken(enum LEX_TokenType tokenType)
 {
     return
@@ -706,6 +915,13 @@ static int isIntegerNumberToken(enum LEX_TokenType tokenType)
         (tokenType == LEX_HEXA_INTEGER);
 }
 
+/**
+ * Gets the integer value of an integer number token.
+ *
+ * @param [in] token subject.
+ *
+ * @return The integer value of the token.
+ */
 static int getIntegerValue(const struct LEX_LexerToken *token)
 {
     const char *current = token->start;
@@ -748,8 +964,19 @@ static int getIntegerValue(const struct LEX_LexerToken *token)
     return value;
 }
 /**
- * <CaseBlock> ::=
- * (('case' integer_number ) | 'default') ':' <Block> ('break' | 'continue' ) ';'
+ * Parses on case block of the switch statement.
+ *
+ * In this language the { } is mandatory around the commands, and
+ * a 'break' and 'continue' must follow it, to show your intent.
+ *
+ @verbatim
+  <CaseBlock> ::=
+  (('case' integer_number ) | 'default') ':' <Block> ('break' | 'continue' ) ';'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 
 static int parseCaseBlock(struct SyntaxContext *context)
@@ -804,8 +1031,18 @@ static int parseCaseBlock(struct SyntaxContext *context)
 }
 
 /**
- * <SwitchStatement> ::=
- * 'switch' '(' <Expression> ')' '{' <CaseBlock>* '}'
+ * Parses the switch statement.
+ *
+ * The compiled should optimize this construct by minimizing the checks. (like binary search)
+ *
+ @verbatim
+  <SwitchStatement> ::=
+  'switch' '(' <Expression> ')' '{' <CaseBlock>* '}'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseSwitchDeclaration(struct SyntaxContext *context)
 {
@@ -829,10 +1066,21 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * <BreakStatement> ::=
- *  'break' integer? ';'
- * <ContinueStatement> ::=
- *  'continue' integer? ';'
+ * Parses break and continue statement.
+ *
+ * An optional integer may follow it which determines the levels of the loop or case block
+ * to continue or break.
+ *
+ @verbatim
+  <BreakStatement> ::=
+   'break' integer? ';'
+  <ContinueStatement> ::=
+   'continue' integer? ';'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_TokenType type)
 {
@@ -875,18 +1123,25 @@ static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_T
 }
 
 /**
- * <Statement> ::=
- * <ReturnStatement> |
- * <IfStatement> |
- * <LoopNextStatement>
- * <VariableDeclaration> |
- * <SimpleStatement> |
- * <SwitchStatement> |
- * <BreakStatement> |
- * <ContinueStatement> |
- * <Block>
+ * Parses statements.
  *
- */
+ @verbatim
+  <Statement> ::=
+  <ReturnStatement> |
+  <IfStatement> |
+  <LoopNextStatement>
+  <VariableDeclaration> |
+  <SimpleStatement> |
+  <SwitchStatement> |
+  <BreakStatement> |
+  <ContinueStatement> |
+  <Block>
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
+*/
 static int parseStatement(struct SyntaxContext *context)
 {
     switch (getCurrentTokenType(context))
@@ -926,8 +1181,16 @@ static int parseStatement(struct SyntaxContext *context)
 }
 
 /**
- * <Block> ::=
- * '{' <Statement>* '}'
+ * Parses a block
+ *
+ @verbatim
+  <Block> ::=
+  '{' <Statement>* '}'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  */
 static int parseBlock(struct SyntaxContext *context)
 {
@@ -950,16 +1213,45 @@ static int parseBlock(struct SyntaxContext *context)
 
 
 /**
- *   TypePrefix ::=
- *       (
- *          (
- *              'handle' |
- *              'buffer' '[' integer_number ']'
- *          ) 'of'
- *      ) |
- *      (
- *         ('pointer' | 'localptr') 'to'
- *      )
+ * Parses a type prefix.
+ *
+ * Type prefix can be:
+ *
+ * - handle of: an opaque pointer to a type that cannot be dereferenced.
+ *      deref() operator is invalid on an expression of this type.
+ *      pointers and staticptrs can be casted to this type.
+ * - buffer[N] of: an array of N elements of a type.
+ *      The array subscript operator can be applied on it.
+ * - pointer to: a memory address of a heap object of a type.
+ *      Pointers of this type is created when allocating memory.
+ * - localptr to: a memory address of a stack object.
+ *      Pointers of this type is created when ref() operator is applied
+ *      to a local variable in a function. Functions cannot return localptrs.
+ *      Localptrs cannot be stored in structures. This is a protection against
+ *      stack corruption, as references to the stack become invalid when the
+ *      function returns.
+ * - staticptr to: a memory address of a static read only data.
+ *      Zero terminated string literals of this langage has the type
+ *      'staticptr to $u8' for example. The deref() operator on a pointer of
+ *      this type does not provide assignable reference. pointers can be casted
+ *      to staticptrs
+ *
+ @verbatim
+    TypePrefix ::=
+        (
+           (
+               'handle' |
+               'buffer' '[' integer_number ']'
+           ) 'of'
+       ) |
+       (
+          ('pointer' | 'localptr' | 'staticptr') 'to'
+       )
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return The attribute of the current node.
  *
  */
 static int parseTypePrefix(struct SyntaxContext *context)

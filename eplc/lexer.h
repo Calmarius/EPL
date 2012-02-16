@@ -67,7 +67,7 @@ enum LEX_TokenType
     LEX_KW_TO, ///< to (Linking word, like 'staticptr to $u8')
     LEX_KW_IN, ///< in (Parameter direction for incoming arguments)
     LEX_KW_OUT, ///< out (Parameter direction for outgoing arguments)
-    LEX_KW_REF, ///< ref (Parameter direction for transitive arguments)
+    LEX_KW_REF, ///< ref (Parameter direction for transitive arguments, and an unary operator to get the address of a variable)
     LEX_KW_FUNCTION, ///< function (Starts function declaration)
     LEX_KW_RETURN, ///< return (Return statement)
     LEX_KW_CAST, ///< cast (Starts a type cast)
