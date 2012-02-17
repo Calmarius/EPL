@@ -96,6 +96,8 @@ void STX_appendChild(
     struct STX_SyntaxTreeNode *node,
     struct STX_SyntaxTreeNode *child)
 {
+    assert(tree == node->belongsTo);
+    assert(tree == child->belongsTo);
     child->parentIndex = node->id;
     child->nextSiblingIndex = -1;
     if (node->firstChildIndex == -1)
@@ -139,7 +141,6 @@ static struct STX_SyntaxTreeNode *allocateNode(struct STX_SyntaxTree *tree)
     node = &tree->nodes[tree->nodeCount];
     node->inScopeId = -1;
     node->definesScopeId = -1;
-    node->allocated = 1;
     node->id = tree->nodeCount;
     node->belongsTo = tree;
     tree->nodeCount++;
@@ -506,7 +507,7 @@ static int parseType(struct SyntaxContext *context);
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static struct STX_NodeAttribute *getCurrentAttribute(struct SyntaxContext *context)
 {
@@ -541,7 +542,7 @@ static int parseQualifiedName(struct SyntaxContext *context);
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseTerm(struct SyntaxContext *context)
 {
@@ -663,7 +664,7 @@ struct STX_NodeAttribute *STX_getNodeAttribute(struct STX_SyntaxTreeNode *node)
 
 void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node)
 {
-
+    assert(tree == node->belongsTo);
     if (node->previousSiblingIndex >= 0)
     {
         tree->nodes[node->previousSiblingIndex].nextSiblingIndex = node->nextSiblingIndex;
@@ -696,7 +697,7 @@ void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseExpression(struct SyntaxContext *context)
 {
@@ -742,7 +743,7 @@ static int parseExpression(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseReturnStatement(struct SyntaxContext *context)
 {
@@ -775,7 +776,7 @@ static int parseBlock(struct SyntaxContext *context);
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 
 static int parseIfStatement(struct SyntaxContext *context)
@@ -827,7 +828,7 @@ static int parseIfStatement(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseLoopNextStatement(struct SyntaxContext *context)
 {
@@ -876,7 +877,7 @@ static void setCurrentNodeType(struct SyntaxContext *context, enum STX_NodeType 
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseSimpleStatement(struct SyntaxContext *context)
 {
@@ -976,7 +977,7 @@ static int getIntegerValue(const struct LEX_LexerToken *token)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 
 static int parseCaseBlock(struct SyntaxContext *context)
@@ -1042,7 +1043,7 @@ static int parseCaseBlock(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseSwitchDeclaration(struct SyntaxContext *context)
 {
@@ -1070,6 +1071,8 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
  *
  * An optional integer may follow it which determines the levels of the loop or case block
  * to continue or break.
+ * For exmaple if the control is in two nested loops, a 'break 2' statement would break
+ * the outer loop.
  *
  @verbatim
   <BreakStatement> ::=
@@ -1080,7 +1083,7 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_TokenType type)
 {
@@ -1140,7 +1143,7 @@ static int parseBreakContinueStatement(struct SyntaxContext *context, enum LEX_T
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
 */
 static int parseStatement(struct SyntaxContext *context)
 {
@@ -1190,7 +1193,7 @@ static int parseStatement(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  */
 static int parseBlock(struct SyntaxContext *context)
 {
@@ -1251,7 +1254,7 @@ static int parseBlock(struct SyntaxContext *context)
  *
  * @param context context.
  *
- * @return The attribute of the current node.
+ * @return Nonzero on success, zero on error.
  *
  */
 static int parseTypePrefix(struct SyntaxContext *context)
@@ -1323,7 +1326,13 @@ static int parseTypePrefix(struct SyntaxContext *context)
 }
 
 /**
- * This is a helper function for scanBuiltInType
+ * Parses a type token. An sets the fields of the given attribute.
+ *
+ * @param [in] attribute The attribute to set.
+ *
+ * @retval Nonzero on success.
+ * @retval Zero on failure, and an error is raised. E_STX_CORRUPT_TOKEN if the
+ *      token is malformed.
  */
 static int parseTypeToken(struct STX_NodeAttribute *attribute)
 {
@@ -1394,12 +1403,23 @@ static int parseTypeToken(struct STX_NodeAttribute *attribute)
 }
 
 /**
- * Type ::=
- *     (
- *          <TypePrefix> <Type>
- *      ) |
- *     built_in_type |
- *    identifier
+ * Parses a type. This node appear in variable, parameter, struct etc. declarations.
+ *
+ * Types can be another type after a type prefix, a built in type, or an user
+ * defined type (struct).
+ *
+ @verbatim
+  Type ::=
+      (
+           <TypePrefix> <Type>
+       ) |
+      built_in_type |
+     identifier
+ @endverbatim
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
+ *
  */
 static int parseType(struct SyntaxContext *context)
 {
@@ -1434,7 +1454,17 @@ static int parseType(struct SyntaxContext *context)
 }
 
 /**
- * <VariableDeclaration> ::= 'vardecl' <Type> identifier ( ':=' <Expression> )? ';'
+ * Parses variable declaration.
+ *
+ * One declaration can declare a single variable.
+ *
+ @verbatim
+  <VariableDeclaration> ::= 'vardecl' <Type> identifier ( ':=' <Expression> )? ';'
+ @endverbatim
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
+ *
  */
 static int parseVariableDeclaration(struct SyntaxContext *context)
 {
@@ -1484,8 +1514,37 @@ static enum STX_ParameterDirection mapTokenTypeToDirection(enum LEX_TokenType ty
 }
 
 /**
- * <Parameter> ::=
- * ( 'in' | 'out' | 'ref') <Type> identifier
+ * Parses a formal parameter.
+ *
+ * In this language formal parameters have directions:
+ *
+ * - in: incoming parameter. Inside the function, incoming parameters are
+ *      not assignable references. Modification of them is not allowed. When the
+ *      function is called, constants can be passed as incoming arguments.
+ *      For assignable references. The compiler implementation may decide, whether
+ *      it copies the value to the stack or copies only the address of it.
+ * - ref: transitive parameter. Its an assignable reference, the function is allowed
+ *      to modify it. The caller must initialize this parameter before passing it.
+ *      Only assignable references can be passed as argument. The address of
+ *      the referenced data is copied on the stack.
+ * - out: outgoing parameter. Similar to the transitive one, but the caller don't
+ *      need to initialize the variable before he passes it to the function. The
+ *      function MUST assign the outgoing parameter before exiting.
+ *
+ * @todo Optional parameters are not supported yet. The 'nothing' keyword
+ *      which is a reference of the memory address zero should be added.
+ *      And a 'exist' unary operator which return nonzero if its argument is
+ *      not 'nothing'.
+ *
+ @verbatim
+  <Parameter> ::=
+  ( 'in' | 'out' | 'ref') <Type> identifier
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
+ *
  */
 static int parseParameter(struct SyntaxContext *context)
 {
@@ -1522,8 +1581,18 @@ static int parseParameter(struct SyntaxContext *context)
 }
 
 /**
- * <ParameterList> ::=
- * (<Parameter> (',' <Parameter>)*)?
+ * Parses a parameter list.
+ *
+ * Its used in function, operator function declarations.
+ *
+ @verbatim
+  <ParameterList> ::=
+  (<Parameter> (',' <Parameter>)*)?
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseParameterList(struct SyntaxContext *context)
 {
@@ -1542,6 +1611,12 @@ static int parseParameterList(struct SyntaxContext *context)
     return 1;
 }
 
+/**
+ * @param type subject.
+ *
+ * @retval True if type is a precedence token type.
+ * @retval False otherwise.
+ */
 static int isPrecedenceTokenType(enum LEX_TokenType type)
 {
     switch (type)
@@ -1557,9 +1632,30 @@ static int isPrecedenceTokenType(enum LEX_TokenType type)
 }
 
 /**
- * <FunctionDeclaration> ::=
- * ('function' | 'operator' precedenceType) <Type> identifier '(' <ParameterList> ')'
- * ((<Block> ( 'cleanup' <Block>)?) | ('external' string ':' string ';'))
+ * Parses a function declaration or operator function declaration.
+ *
+ * In this language functions can have an optional cleanup block.
+ * This cleanup block is executed when a return statement called.
+ *
+ * External functions can be referenced by the external keyword.
+ * The first string is the location of the external file the function is in.
+ * The second string is the format identifier. The compiler uses this
+ * identifier to handle the file. For example "EPL" can be used
+ * to refer other EPL modules. "DLL" can be used to refer to DLLs.
+ *
+ * Operator functions can be declared. Operator function can take
+ * two arguments and act as an infix operator. Precedence type must
+ * be provided, it can be relational, additive and multiplicative.
+ *
+  @verbatim
+  <FunctionDeclaration> ::=
+  ('function' | 'operator' precedence_type) <Type> identifier '(' <ParameterList> ')'
+  ((<Block> ( 'cleanup' <Block>)?) | ('external' string ':' string ';'))
+  @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseFunctionDeclaration(struct SyntaxContext *context)
 {
@@ -1654,8 +1750,16 @@ static int parseFunctionDeclaration(struct SyntaxContext *context)
 static int parseDeclaration(struct SyntaxContext *context);
 
 /**
- * <NamespaceDeclaration> ::=
- * 'namespace' identifier '{' <Declarations> '}'
+ * Parses a namesoace declaration
+ *
+ @verbatim
+  <NamespaceDeclaration> ::=
+  'namespace' identifier '{' <Declaration>* '}'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseNamespaceDeclaration(struct SyntaxContext *context)
 {
@@ -1687,8 +1791,18 @@ static int parseNamespaceDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * QualifiedName ::=
- * identifier ( '::' identifier)*
+ * Parses a qualified name.
+ *
+ * Qualified name part are separated by the :: (scope resolution) operator.
+ *
+ @verbatim
+  QualifiedName ::=
+  identifier ( '::' identifier)*
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 
 static int parseQualifiedName(struct SyntaxContext *context)
@@ -1749,8 +1863,19 @@ static int parseQualifiedName(struct SyntaxContext *context)
  }
 
 /**
- * <UsingDeclaration> ::=
- * 'using' <QualifiedName> ';'
+ * Parses using declaration.
+ *
+ * This using declaration brings the symbols to the current scope of the used namespaces.
+ * But not it's subnamespaces.
+ *
+ @verbatim
+  <UsingDeclaration> ::=
+  'using' <QualifiedName> ';'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 
 static int parseUsingDeclaration(struct SyntaxContext *context)
@@ -1766,8 +1891,18 @@ static int parseUsingDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * StructDeclaration ::=
- * 'struct' identifier '{'  (<Type> identifier ';' )* '}'
+ * Parses a struct declaration.
+ *
+ * The identifier becomes the name of the new type, which can be used.
+ *
+ @verbatim
+  StructDeclaration ::=
+  'struct' identifier '{'  (<Type> identifier ';' )* '}'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseStructDeclaration(struct SyntaxContext *context)
 {
@@ -1817,8 +1952,18 @@ static int parseStructDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * FuncPtrDeclaration ::=
- * 'funcptr' <Type> identifer '(' <ParameterList> ')' ';'
+ * Parses a funcptr declaration.
+ *
+ * This declares a function pointer type.
+ *
+ @verbatim
+  FuncPtrDeclaration ::=
+  'funcptr' <Type> identifer '(' <ParameterList> ')' ';'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseFuncPtrDeclaration(struct SyntaxContext *context)
 {
@@ -1849,8 +1994,23 @@ static int parseFuncPtrDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * PlatfromDeclaration :=
- * 'for' string (, string)* '{' <Declaration>* '}'
+ * Parses a platform declaration.
+ *
+ * Several platform names are enumerated after the 'for'.
+ * If all of them are given as compiler arguments the declarations in the block
+ * is considered. This construct is useful compiling the same code for different
+ * platforms.
+ *
+ * The platform declaration does not create a namespace.
+ *
+ @verbatim
+  PlatfromDeclaration :=
+  'for' string (, string)* '{' <Declaration>* '}'
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parsePlatformDeclaration(struct SyntaxContext *context)
 {
@@ -1916,14 +2076,22 @@ static int parsePlatformDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * Declaration ::=
- * <VariableDeclaration> |
- * <FunctionDeclaration> |
- * <NamespaceDeclaration> |
- * <UsingDeclaration> |
- * <StructDeclaration> |
- * <FuncPtrDeclaration> |
- * <PlatfromDeclaration>
+ * Parses a declaration.
+ *
+ @verbatim
+  Declaration ::=
+  <VariableDeclaration> |
+  <FunctionDeclaration> |
+  <NamespaceDeclaration> |
+  <UsingDeclaration> |
+  <StructDeclaration> |
+  <FuncPtrDeclaration> |
+  <PlatfromDeclaration>
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 static int parseDeclaration(struct SyntaxContext *context)
 {
@@ -1960,11 +2128,27 @@ static int parseDeclaration(struct SyntaxContext *context)
 }
 
 /**
- * Module ::=
- * 'module' {'exe' | 'lib' | 'dll' } ';'
- * <Declaration>*
- * 'main'
- * <Block>
+ * Parses the module.
+ *
+ * This is the main function where the parsing starts.
+ *
+ * There module types are supported:
+ *
+ * - exe: executable file
+ * - lib: static library
+ * - dll: shared library
+ *
+ @verbatim
+  Module ::=
+  'module' {'exe' | 'lib' | 'dll' } ';'
+  <Declaration>*
+  'main'
+  <Block>
+ @endverbatim
+ *
+ * @param context context.
+ *
+ * @return Nonzero on success, zero on error.
  */
 
 static int parseModule(struct SyntaxContext *context)
