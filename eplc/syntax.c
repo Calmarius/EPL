@@ -473,8 +473,10 @@ static int parseExpression(struct SyntaxContext *context);
 /**
  * Parses argument list. The argument list is used in function calls.
  *
- * <ArgumentList> ::=
- * '(' <Expression>? (',' <Expression>)* ')'
+ @verbatim
+  <ArgumentList> ::=
+  '(' <Expression>? (',' <Expression>)* ')'
+ @endverbatim
  *
  * @param context context
  *
@@ -1082,6 +1084,7 @@ static int parseSwitchDeclaration(struct SyntaxContext *context)
  @endverbatim
  *
  * @param context context.
+ * @param type the type of the token. Can be LEX_KW_BREAK or LEX_KW_CONTINUE.
  *
  * @return Nonzero on success, zero on error.
  */

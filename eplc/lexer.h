@@ -1,8 +1,6 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "dynarray.h"
-
 /**
  * Stores the token types.
  */
@@ -34,7 +32,7 @@ enum LEX_TokenType
     LEX_GREATER_EQUAL_THAN, ///< >=
     LEX_NOT_EQUAL, ///< !=
     LEX_STRING, ///< eg. "Hello world!"
-    LEX_PERIOD, ///< .
+    LEX_PERIOD, ///< . (period)
     LEX_SCOPE_SEPARATOR, ///< ::
     LEX_DIVISION_OPERATOR, ///< /
     LEX_BLOCK_COMMENT, ///< eg. /*Comment*/

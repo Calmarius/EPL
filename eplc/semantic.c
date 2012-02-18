@@ -97,6 +97,7 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
  * Allocates and initializes a scope
  *
  * @param parentScope the parent of the scope.
+ * @param context The semantic context.
  *
  * @return the new scope
  */
@@ -245,6 +246,7 @@ static void dumpScopes(struct SemanticContext *context)
 /**
  * Makes the first child of the current node current.
  *
+ * @param [in,out] context The semantic context.
  * @param [in] needError Set true to raise E_SMC_CORRUPT_SYNTAX_TREE
  *      error if the current node don't have children.
  *
@@ -270,6 +272,7 @@ static int enterCurrentNode(struct SemanticContext *context, int needError)
  * Compares the type of the current node with the given type.
  * Raises E_SMC_CORRUPT_SYNTAX_TREE if not match.
  *
+ * @param [in,out] context The semantic context.
  * @param [in] type The type to check.
  *
  * @return Nonzero success.
@@ -287,6 +290,7 @@ static int assertNodeType(struct SemanticContext *context, enum STX_NodeType typ
 /**
  * Makes the next sibling of the current node current.
  *
+ * @param [in,out] context The semantic context.
  * @param [in] needError Set true to make the function raise an E_SMC_CORRUPT_SYNTAX_TREE
  *      error if there is no next sibling.
  *
@@ -334,6 +338,7 @@ static int checkParameter(struct SemanticContext *context)
  * few arguments. Raises E_SMC_TOO_MANY_ARGUMENTS error if there err too
  * many arguemnts.
  *
+ * @param [in,out] context The semantic context.
  * @param [in] minParameterCount Minimum amount of parameters.
  * @param [in] maxParameterCount Maximum amount of parameters.
  *
@@ -381,6 +386,8 @@ static int checkParameterList(
 /**
  * Checks statements in a block.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkBlock(struct SemanticContext *context)
@@ -402,6 +409,8 @@ static int checkBlock(struct SemanticContext *context)
 
 /**
  * Checks if statement.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -434,6 +443,8 @@ static int checkIfStatement(struct SemanticContext *context)
 
 /**
  * Checks loop statement.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -488,6 +499,8 @@ static int isContinuableNodeType(enum STX_NodeType type)
 /**
  * Checks break or continue statements.
  * Assigns the node id of the statement they break or continue.
+ *
+ * @param [in,out] context The semantic context.
  *
  * May raise E_SMC_BREAK_IS_NOT_IN_LOOP_OR_CASE_BLOCK or
  * E_SMC_CONTINUE_IS_NOT_IN_LOOP_OR_CASE_BLOCK errors.
@@ -563,6 +576,8 @@ static int checkBreakContinueStatement(struct SemanticContext *context)
 /**
  * Checks the parts of the case block.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkCaseBlock(struct SemanticContext *context)
@@ -576,6 +591,8 @@ static int checkCaseBlock(struct SemanticContext *context)
 
 /**
  * Checks the switch statement.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -594,6 +611,8 @@ static int checkSwitchStatement(struct SemanticContext *context)
 
 /**
  * Checks a statement.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -635,6 +654,8 @@ static int checkStatement(struct SemanticContext *context)
 /**
  * Checks function delcarations.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkFunction(struct SemanticContext *context)
@@ -665,6 +686,8 @@ static int checkFunction(struct SemanticContext *context)
 /**
  * Checks operator functions.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkOperatorFunction(struct SemanticContext *context)
@@ -694,6 +717,8 @@ static int checkOperatorFunction(struct SemanticContext *context)
 
 /**
  * Checks platform context declarations.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -726,6 +751,8 @@ static int checkForPlatformDeclaration(struct SemanticContext *context)
 /**
  * Checks platform context declarations.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkNamespace(struct SemanticContext *context)
@@ -748,6 +775,7 @@ static int checkNamespace(struct SemanticContext *context)
 /**
  * Adds node to the used namespaces of the current scope.
  *
+ * @param [in,out] context The semantic context.
  * @param node The namespace node of the using declaration.
  *
  * @return Nonzero on success.
@@ -791,6 +819,8 @@ static int addNodeToUsedNamespaces(
  * Checks using declaration. Adds the namespace to the current scope's
  * used namespace set.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkUsingDeclaration(struct SemanticContext *context)
@@ -820,6 +850,8 @@ static int checkUsingDeclaration(struct SemanticContext *context)
 
 /**
  * Checks declarations.
+ *
+ * @param [in,out] context The semantic context.
  *
  * @return Nonzero on success.
  */
@@ -859,6 +891,8 @@ static int checkDeclaration(struct SemanticContext *context)
 /**
  * Checks the module.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkModule(struct SemanticContext *context)
@@ -886,6 +920,8 @@ static int checkModule(struct SemanticContext *context)
 /**
  * Checks the root node. All checks start from this.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkRootNode(struct SemanticContext *context)
@@ -903,6 +939,7 @@ struct STX_SyntaxTreeNode *STX_getRootNode(struct STX_SyntaxTree *tree);
 /**
  * Looks up a symbol.
  *
+ * @param [in,out] context The semantic context.
  * @param startScopeId The id of the scope where the lookup start.
  * @param varName The name of the symbol to look up.
  * @param varNameLength The length of the name.
@@ -986,6 +1023,7 @@ static struct STX_SyntaxTreeNode *lookUpSymbol(
 /**
  * Find the symbol declaration from the given fully qualified name node.
  *
+ * @param [in,out] context The semantic context.
  * @param node An STX_QUALIFIED_NAME node. Which is looked up.
  *
  * @return The node that declared the symbol. Returns null if the symbol is not found
@@ -1072,6 +1110,7 @@ static struct STX_SyntaxTreeNode *findSymbolDeclarationFromFullyQualifiedName(
  * This function also checks the context where the symbol is used. For example
  * if the symbol used like an operator, it checks whether it is an operator function.
  *
+ * @param [in,out] context The semantic context.
  * @param node The STX_QUALIFIED_NAME node to check.
  *
  * @return Nonzero on success.
@@ -1399,6 +1438,7 @@ static void performShuntingYardAlgorithm(struct STX_SyntaxTree *tree, struct STX
 /**
  * Sets the type info of a term.
  *
+ * @param [in,out] context The semantic context.
  * @param node The term node no set the info on.
  *
  * @return Nonzero on success.
@@ -1457,6 +1497,7 @@ static int setTypeOfTerm(struct SemanticContext *context, struct STX_SyntaxTreeN
  * a postorder transversal on it can be used to calculate the result.
  * Second it assigns typeinfo the terms.
  *
+ * @param [in,out] context The semantic context.
  * @param exprNode The expression node to check.
  *
  * @return Nonzero on success. The appropriate error is raised.
@@ -1517,6 +1558,8 @@ static int checkExpression(struct SemanticContext *context, struct STX_SyntaxTre
 /**
  * Transverses the syntax tree and checks the expressions.
  *
+ * @param [in,out] context The semantic context.
+ *
  * @return Nonzero on success.
  */
 static int checkExpressions(struct SemanticContext *context)
@@ -1546,6 +1589,9 @@ static int checkExpressions(struct SemanticContext *context)
 
 /**
  * Transverses the syntax tree and assigns scope ids to all nodes.
+ *
+ * @param [in,out] context The semantic context.
+ *
  */
 static void setScopeIdsOnAllNodes(struct SemanticContext *context)
 {

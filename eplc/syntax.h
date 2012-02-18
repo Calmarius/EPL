@@ -412,7 +412,7 @@ void STX_removeNode(struct STX_SyntaxTree *tree, struct STX_SyntaxTreeNode *node
 const char *STX_nodeTypeToString(enum STX_NodeType nodeType);
 
 /**
- * @param [in] nodeType A meta primitive type.
+ * @param [in] type A meta primitive type.
  *
  * @return The meta primitive type, converted to string.
  */

@@ -61,6 +61,7 @@ static struct AssocBlock *createBlock(struct AssocBlock *parent)
 /**
  * Frees the memory allocated for the block.
  *
+ * @param [in,out] block The block to free.
  * @param [in] recursive Set to non-zero to release the child nodes too.
  */
 static void cleanupBlock(struct AssocBlock *block, int recursive)
@@ -507,7 +508,7 @@ void eliminateUndersizedBlock(struct ASSOC_Array *array, struct AssocBlock *bloc
  *
  * @param [in,out] array The array the block is in. The root node may be changed.
  * @param [in,out] block The block to begin searching in.
- * @param [in] key The key to find.
+ * @param [in] key, keyLength The key (string) to find and its length.
  * @param [in] moveDown When set to non-zero it uses the deleted element as
  *      separator of the two child nodes that will be merged.
  *
