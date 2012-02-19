@@ -1,0 +1,11 @@
+This language will have the following features and concepts:
+
+- LL1 grammar which is easy to parse with recursive descent
+- Modular compiler: there will be two main components: the top components which analyze the source code and generates info for the code generator.
+- No implicit type conversions to increase safety and see performance penalties: you must cast every time when add a float to an integer or vice versa (float-integer conversion is quite slow). Similar need when working with signed and unsigned integers: many bugs can arise due to using the improper integer.
+- Parameter directions: in, out, ref so pointer magic of arguments are hidden.
+- Four kinds of pointer types: pointer: points to data on heap; localptr: create when getting the address of a local variable, functions cannot return localptrs (prevent stack corruption); staticptr: to read only static data, like string literals in C, you cannot write through a staticptr. handle: opaque pointer, you cannot dereference it.
+- cleanup blocks: An optional cleanup block can be added to the function. Whenever the function returns, code in the cleanup block is executed.
+- etc.
+
+The entire project is the WIP phase (10% complete I think), and the development is paused. Feel free to fork your project from mine if you want.
