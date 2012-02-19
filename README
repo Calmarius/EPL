@@ -1,3 +1,5 @@
+I just tried to made a system programming language like C. After 3 months (roughly 100 man hours) I decided to move on and start something new. So I released the source of it.
+
 This language will have the following features and concepts:
 
 - LL1 grammar which is easy to parse with recursive descent
